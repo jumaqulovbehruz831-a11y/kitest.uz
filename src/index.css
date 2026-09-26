@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* Modern Architectural Background Mesh */
+.kitest-bg-dark {
+  background-color: #060a12;
+  background-image:
+    radial-gradient(at 15% 10%, rgba(16, 185, 129, 0.10) 0px, transparent 45%),
+    radial-gradient(at 85% 15%, rgba(14, 165, 233, 0.09) 0px, transparent 45%),
+    linear-gradient(to right, rgba(30, 41, 59, 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 41, 59, 0.22) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+}
+
+.kitest-bg-light {
+  background-color: #f4f7fb;
+  color: #0f172a;
+  background-image:
+    radial-gradient(at 15% 10%, rgba(16, 185, 129, 0.12) 0px, transparent 45%),
+    radial-gradient(at 85% 15%, rgba(14, 165, 233, 0.10) 0px, transparent 45%),
+    linear-gradient(to right, rgba(203, 213, 225, 0.45) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(203, 213, 225, 0.45) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+}
+
+/* Light mode surface overrides for crisp high-contrast Day theme */
+.kitest-bg-light header {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: #e2e8f0 !important;
+}
+
+.kitest-bg-light .bg-slate-900,
+.kitest-bg-light .bg-slate-900\/90,
+.kitest-bg-light .bg-slate-900\/80,
+.kitest-bg-light .bg-slate-900\/70,
+.kitest-bg-light .bg-slate-900\/60,
+.kitest-bg-light .bg-\[\#0e1726\],
+.kitest-bg-light .bg-\[\#17212b\] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
+}
+
+.kitest-bg-light .bg-slate-950,
+.kitest-bg-light .bg-slate-950\/80,
+.kitest-bg-light .bg-slate-950\/60,
+.kitest-bg-light .bg-\[\#182533\] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.kitest-bg-light .bg-slate-800 {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.kitest-bg-light .text-white,
+.kitest-bg-light .text-slate-100,
+.kitest-bg-light .text-slate-200 {
+  color: #0f172a !important;
+}
+
+.kitest-bg-light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.kitest-bg-light .text-slate-400,
+.kitest-bg-light .text-slate-500 {
+  color: #475569 !important;
+}
+
+.kitest-bg-light .border-slate-800,
+.kitest-bg-light .border-slate-800\/90,
+.kitest-bg-light .border-slate-800\/80,
+.kitest-bg-light .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+.kitest-bg-light .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+.kitest-bg-light .divide-slate-800\/70 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+.kitest-bg-light .bg-emerald-600 .text-white,
+.kitest-bg-light button.bg-emerald-600,
+.kitest-bg-light button.bg-sky-600,
+.kitest-bg-light button.bg-rose-600 {
+  color: #ffffff !important;
+}
+
+.kitest-bg-light .text-emerald-400,
+.kitest-bg-light .text-emerald-300 {
+  color: #059669 !important;
+}
+
+.kitest-bg-light .text-sky-400,
+.kitest-bg-light .text-sky-300 {
+  color: #0284c7 !important;
+}
+
+.kitest-bg-light .text-rose-400,
+.kitest-bg-light .text-rose-300 {
+  color: #e11d48 !important;
+}
+
+.kitest-bg-light .text-amber-400,
+.kitest-bg-light .text-amber-300 {
+  color: #d97706 !important;
+}
+
+/* Custom sleek scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8);
+}
