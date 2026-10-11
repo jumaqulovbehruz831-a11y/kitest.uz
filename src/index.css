@@ -11,26 +11,242 @@
   }
 }
 
-/* Modern Architectural Background Mesh */
+/* Multi-Spectrum Keyframe Animations */
+@keyframes kitestAurora {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes kitestShimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes kitestFloat {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.03);
+  }
+}
+
+@keyframes kitestPulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 18px -2px rgba(56, 189, 248, 0.35), 0 0 28px -6px rgba(168, 85, 247, 0.3);
+  }
+  33% {
+    box-shadow: 0 0 18px -2px rgba(244, 63, 94, 0.35), 0 0 28px -6px rgba(245, 158, 11, 0.3);
+  }
+  66% {
+    box-shadow: 0 0 18px -2px rgba(16, 185, 129, 0.35), 0 0 28px -6px rgba(99, 102, 241, 0.35);
+  }
+}
+
+.animate-kitest-aurora {
+  background-size: 250% 250%;
+  animation: kitestAurora 8s ease infinite;
+}
+
+.animate-kitest-shimmer {
+  background-size: 200% auto;
+  animation: kitestShimmer 5s linear infinite;
+}
+
+.animate-kitest-float {
+  animation: kitestFloat 4.5s ease-in-out infinite;
+}
+
+.animate-kitest-glow {
+  animation: kitestPulseGlow 6s ease-in-out infinite;
+}
+
+/* ========================================================================== */
+/* ULTRA-MODERN EXECUTIVE HOLOGRAPHIC & TITANIUM TYPOGRAPHY SHADERS           */
+/* ========================================================================== */
+
+@keyframes kitestSpecularSweep {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+@keyframes kitestHologramFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes kitestOpticalBloom {
+  0%, 100% {
+    filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.32));
+  }
+  50% {
+    filter: drop-shadow(0 0 18px rgba(129, 140, 248, 0.42));
+  }
+}
+
+/* 1. Holographic Sapphire & Ultraviolet Light-Sweep (Default Executive Accent) */
+.kitest-text-rainbow {
+  background-image: linear-gradient(
+    110deg,
+    #f8fafc 0%,
+    #7dd3fc 20%,
+    #38bdf8 38%,
+    #818cf8 56%,
+    #c084fc 72%,
+    #38bdf8 86%,
+    #f8fafc 100%
+  );
+  background-size: 240% auto;
+  color: transparent !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: kitestSpecularSweep 6s linear infinite, kitestOpticalBloom 5s ease-in-out infinite;
+}
+
+/* 2. Cyber Laser Cyan-Indigo Optical Beam */
+.kitest-text-neon {
+  background-image: linear-gradient(
+    110deg,
+    #e0f2fe 0%,
+    #22d3ee 28%,
+    #6366f1 55%,
+    #38bdf8 80%,
+    #e0f2fe 100%
+  );
+  background-size: 220% auto;
+  color: transparent !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: kitestSpecularSweep 5s linear infinite, kitestOpticalBloom 4s ease-in-out infinite;
+}
+
+/* 3. Northern Emerald-Sapphire Aurora Shimmer */
+.kitest-text-aurora {
+  background-image: linear-gradient(
+    110deg,
+    #f0fdf4 0%,
+    #34d399 26%,
+    #38bdf8 54%,
+    #818cf8 82%,
+    #f0fdf4 100%
+  );
+  background-size: 220% auto;
+  color: transparent !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: kitestHologramFlow 6s ease infinite;
+}
+
+/* 4. Sovereign Platinum & Imperial Gold Shimmer */
+.kitest-text-gold {
+  background-image: linear-gradient(
+    110deg,
+    #fffbeb 0%,
+    #fcd34d 28%,
+    #f59e0b 52%,
+    #fde68a 78%,
+    #fffbeb 100%
+  );
+  background-size: 220% auto;
+  color: transparent !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: kitestSpecularSweep 5.5s linear infinite;
+}
+
+/* 5. Liquid Titanium & Diamond Chrome */
+.kitest-text-crystal {
+  background-image: linear-gradient(
+    110deg,
+    #94a3b8 0%,
+    #ffffff 32%,
+    #bae6fd 50%,
+    #ffffff 68%,
+    #94a3b8 100%
+  );
+  background-size: 220% auto;
+  color: transparent !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: kitestSpecularSweep 5s linear infinite;
+}
+
+/* Executive Cohesive Word Shaders (Sophisticated Deep Tech Palette — No Cartoon Rainbow) */
+.kitest-word-p0,
+.kitest-word-p2,
+.kitest-word-p4 {
+  background-image: linear-gradient(115deg, #ffffff 0%, #7dd3fc 35%, #38bdf8 65%, #818cf8 100%);
+  background-size: 220% auto;
+  color: transparent !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: kitestSpecularSweep 6s linear infinite;
+  filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.28));
+}
+
+.kitest-word-p1,
+.kitest-word-p3,
+.kitest-word-p5 {
+  background-image: linear-gradient(115deg, #e0f2fe 0%, #38bdf8 30%, #818cf8 68%, #c084fc 100%);
+  background-size: 220% auto;
+  color: transparent !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: kitestSpecularSweep 6s linear infinite;
+  filter: drop-shadow(0 0 14px rgba(129, 140, 248, 0.28));
+}
+
+/* Subtle Metallic Platinum Word Finish for Modern Non-Accent Words in Headlines */
+.kitest-modern-word:hover {
+  color: #f8fafc;
+  text-shadow: 0 0 20px rgba(56, 189, 248, 0.45);
+}
+
+/* Modern Multi-Color Architectural Background Mesh */
 .kitest-bg-dark {
-  background-color: #060a12;
+  background-color: #060913;
   background-image:
-    radial-gradient(at 15% 10%, rgba(16, 185, 129, 0.10) 0px, transparent 45%),
-    radial-gradient(at 85% 15%, rgba(14, 165, 233, 0.09) 0px, transparent 45%),
+    radial-gradient(at 10% 10%, rgba(56, 189, 248, 0.12) 0px, transparent 42%),
+    radial-gradient(at 88% 12%, rgba(168, 85, 247, 0.12) 0px, transparent 42%),
+    radial-gradient(at 50% 85%, rgba(244, 63, 94, 0.08) 0px, transparent 45%),
+    radial-gradient(at 15% 80%, rgba(245, 158, 11, 0.07) 0px, transparent 40%),
     linear-gradient(to right, rgba(30, 41, 59, 0.22) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(30, 41, 59, 0.22) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
 }
 
 .kitest-bg-light {
   background-color: #f4f7fb;
   color: #0f172a;
   background-image:
-    radial-gradient(at 15% 10%, rgba(16, 185, 129, 0.12) 0px, transparent 45%),
-    radial-gradient(at 85% 15%, rgba(14, 165, 233, 0.10) 0px, transparent 45%),
+    radial-gradient(at 12% 10%, rgba(56, 189, 248, 0.14) 0px, transparent 45%),
+    radial-gradient(at 88% 15%, rgba(168, 85, 247, 0.12) 0px, transparent 45%),
+    radial-gradient(at 50% 85%, rgba(245, 158, 11, 0.10) 0px, transparent 45%),
     linear-gradient(to right, rgba(203, 213, 225, 0.45) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(203, 213, 225, 0.45) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
 }
 
 /* Light mode surface overrides for crisp high-contrast Day theme */
@@ -40,19 +256,23 @@
 }
 
 .kitest-bg-light .bg-slate-900,
+.kitest-bg-light .bg-slate-900\/95,
 .kitest-bg-light .bg-slate-900\/90,
 .kitest-bg-light .bg-slate-900\/80,
 .kitest-bg-light .bg-slate-900\/70,
 .kitest-bg-light .bg-slate-900\/60,
 .kitest-bg-light .bg-\[\#0e1726\],
-.kitest-bg-light .bg-\[\#17212b\] {
+.kitest-bg-light .bg-\[\#17212b\],
+.kitest-bg-light .bg-\[\#0b1320\] {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
   box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
 }
 
 .kitest-bg-light .bg-slate-950,
+.kitest-bg-light .bg-slate-950\/90,
 .kitest-bg-light .bg-slate-950\/80,
+.kitest-bg-light .bg-slate-950\/70,
 .kitest-bg-light .bg-slate-950\/60,
 .kitest-bg-light .bg-\[\#182533\] {
   background-color: #f8fafc !important;
@@ -94,7 +314,9 @@
 .kitest-bg-light .bg-emerald-600 .text-white,
 .kitest-bg-light button.bg-emerald-600,
 .kitest-bg-light button.bg-sky-600,
-.kitest-bg-light button.bg-rose-600 {
+.kitest-bg-light button.bg-rose-600,
+.kitest-bg-light button.bg-violet-600,
+.kitest-bg-light button.bg-indigo-600 {
   color: #ffffff !important;
 }
 
@@ -135,4 +357,66 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.8);
+}
+
+/* ========================================================================== */
+/* SIDEBAR NEON ROTATING BORDER EFFECT (Sichqoncha borganda rang-barang neon) */
+/* ========================================================================== */
+@keyframes neonRainbowSpin {
+  0% {
+    filter: hue-rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+
+.sidebar-neon-hover {
+  position: relative;
+  border-radius: 0.75rem;
+  transition: all 0.25s ease;
+  z-index: 1;
+}
+
+.sidebar-neon-hover::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    #38bdf8,
+    #ec4899,
+    #a855f7,
+    #f59e0b,
+    #10b981,
+    #6366f1,
+    #38bdf8
+  );
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  animation: neonRainbowSpin 3s linear infinite;
+}
+
+.sidebar-neon-hover::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: calc(0.75rem - 1px);
+  background: inherit;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.sidebar-neon-hover:hover::before {
+  opacity: 1;
+}
+
+.sidebar-neon-hover:hover {
+  box-shadow: 0 0 16px -2px rgba(56, 189, 248, 0.4), 0 0 24px -4px rgba(236, 72, 153, 0.35);
+  transform: translateY(-1px);
 }

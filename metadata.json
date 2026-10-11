@@ -1,7 +1,10 @@
 {
   "name": "KITEST - Dasturlash va Musobaqalar Platformasi",
-  "description": "RoboContest uslubidagi zamonaviy dasturlash, olimpiada masalalari, Instagram shaklidagi chat va sun'iy intellektli ta'lim platformasi. Owner & Admin: Behruz Jumaqulov.",
-  "requestFramePermissions": [],
+  "description": "KITEST milliy intellektual CHSB testlar, olimpiada masalalari, video kurslar, o'quv rejalari va sun'iy intellektli ta'lim platformasi. Asoschi va Bosh Admin: Behruz Jumaqulov.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
