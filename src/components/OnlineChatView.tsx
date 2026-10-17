@@ -207,7 +207,7 @@ export const OnlineChatView: React.FC<OnlineChatViewProps> = ({
       playKitestSound('tick', soundEnabled);
       const ringTimer = setTimeout(() => {
         setActiveCall((prev) => (prev ? { ...prev, status: 'connected' } : null));
-        playKitestSound('start', soundEnabled);
+        playKitestSound('fanfare', soundEnabled);
       }, 2500);
       return () => clearTimeout(ringTimer);
     }
@@ -223,11 +223,12 @@ export const OnlineChatView: React.FC<OnlineChatViewProps> = ({
   }, [activeCall?.isOpen, activeCall?.status, soundEnabled]);
 
   const handleStartCall = (type: 'voice' | 'video') => {
+    const currentGroup = chatGroups.find((g) => g.id === activeRoomId);
     const callee = selectedDmUser
       ? selectedDmUser.name
       : activeRoomId === 'ai_tutor'
       ? 'KITEST AI Ustoz'
-      : activeRoom?.name || 'KITEST Onlayn Xona';
+      : currentGroup?.name || 'KITEST Onlayn Xona';
     const avatar = selectedDmUser?.avatarUrl;
     const role = selectedDmUser?.role;
 

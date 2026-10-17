@@ -1124,7 +1124,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('home')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer ${
                       currentTab === 'home' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1143,7 +1143,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('problems')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'problems' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1161,7 +1161,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('tests_list')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'tests_list' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1179,7 +1179,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('code_arena')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'code_arena' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1194,7 +1194,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('duels')}
-                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'duels' && !selectedTest
                         ? 'bg-sky-600 text-white shadow-md'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1227,7 +1227,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('contests')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'contests' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1245,7 +1245,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('submissions')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'submissions' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1263,7 +1263,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('activity_map')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'activity_map' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1284,7 +1284,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('courses')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'courses' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1302,7 +1302,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('books_3d')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'books_3d' && !selectedTest
                         ? 'bg-indigo-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1320,7 +1320,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('study_plans')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'study_plans' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1335,7 +1335,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('algorithms')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'algorithms' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1350,7 +1350,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('roadmap')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'roadmap' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1365,7 +1365,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('my_classes')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'my_classes' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1386,7 +1386,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('all_users')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       (currentTab === 'all_users' || currentTab === 'leaderboard') &&
                       !selectedTest
                         ? 'bg-sky-600 text-white'
@@ -1405,7 +1405,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('subscriptions')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'subscriptions' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1420,7 +1420,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('blogs')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'blogs' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1435,7 +1435,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('create_test')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'create_test' && !selectedTest
                         ? 'bg-purple-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1450,7 +1450,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('majlis')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-extrabold flex items-center justify-between transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-extrabold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'majlis' && !selectedTest
                         ? 'bg-rose-600 text-white'
                         : 'text-rose-300 hover:bg-rose-500/15'
@@ -1471,7 +1471,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setIsBgCustomizerOpen(true)}
-                    className="w-full py-2 px-2.5 rounded-lg text-xs font-bold text-sky-300 hover:bg-sky-500/15 flex items-center gap-2.5"
+                    className="sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-bold text-sky-300 hover:bg-sky-500/15 flex items-center gap-2.5 transition-all cursor-pointer"
                   >
                     <Settings className="w-4 h-4 text-sky-400" />
                     <span>⚙️ Nastroyka (Dizayn)</span>
@@ -1480,7 +1480,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setIsCertificatesStoreOpen(true)}
-                    className="w-full py-2 px-2.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-900 hover:text-white flex items-center gap-2.5"
+                    className="sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-900 hover:text-white flex items-center gap-2.5 transition-all cursor-pointer"
                   >
                     <Award className="w-4 h-4 text-amber-400" />
                     <span>Sertifikatlar</span>
@@ -1489,7 +1489,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setIsLuckyWheelOpen(true)}
-                    className="w-full py-2 px-2.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-900 hover:text-white flex items-center gap-2.5"
+                    className="sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-900 hover:text-white flex items-center gap-2.5 transition-all cursor-pointer"
                   >
                     <Zap className="w-4 h-4 text-purple-400" />
                     <span>Omad barabani</span>
@@ -1498,7 +1498,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('our_team')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer ${
                       currentTab === 'our_team' && !selectedTest
                         ? 'bg-sky-600 text-white'
                         : 'text-slate-300 hover:bg-slate-900 hover:text-white'
@@ -1511,7 +1511,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setIsOnboardingOpen(true)}
-                    className="w-full py-2 px-2.5 rounded-lg text-xs font-bold text-emerald-300 hover:bg-emerald-500/15 flex items-center gap-2.5"
+                    className="sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-bold text-emerald-300 hover:bg-emerald-500/15 flex items-center gap-2.5 transition-all cursor-pointer"
                   >
                     <HelpCircle className="w-4 h-4 text-emerald-400" />
                     <span>📖 Interaktiv Tutorial</span>
@@ -1520,7 +1520,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => navigateTab('create_test')}
-                    className={`w-full py-2 px-2.5 rounded-lg text-xs font-extrabold flex items-center gap-2.5 transition-colors ${
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2.5 transition-all cursor-pointer ${
                       currentTab === 'create_test' && !selectedTest
                         ? 'bg-emerald-600 text-white'
                         : 'text-emerald-300 hover:bg-emerald-500/15'
@@ -1534,7 +1534,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => navigateTab('admin')}
-                      className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                      className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer ${
                         currentTab === 'admin' && !selectedTest
                           ? 'bg-amber-600 text-white'
                           : 'text-amber-300 hover:bg-amber-500/15'
@@ -2270,10 +2270,10 @@ export default function App() {
         }}
       />
 
-      {/* Uchadigan Varraklar va Emotsiyalar (Floating kites in the sky) */}
+      {/* Emotsiyalar va Varraklar (Faqat harakat yoki so'z ustiga kelganda paydo bo'ladi) */}
       <FlyingKitesAndEmotionsOverlay
         soundEnabled={soundEnabled}
-        enableAmbientKites={true}
+        enableAmbientKites={false}
       />
     </div>
   );

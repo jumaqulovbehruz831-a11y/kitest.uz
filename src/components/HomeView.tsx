@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { motion } from 'motion/react';
 import {
   TestItem,
   User,
@@ -245,17 +246,25 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 font-mono text-[10px] font-bold">
                 <Sparkles className="w-3 h-3 text-sky-500" />
                 <span>RASMIY TAQDIMOT REKLAMASI</span>
+                <span className="ml-1 px-1.5 py-0.2 rounded bg-sky-600 text-white text-[9px] font-black tracking-wider">
+                  720p HD
+                </span>
               </div>
               <h2 className="text-base sm:text-lg font-black text-slate-900 mt-0.5">
-                KITEST Education: Barcha imkoniyatlar 2 daqiqada
+                KITEST Education: Barcha imkoniyatlar (720p HD Video)
               </h2>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold text-slate-500 px-3 py-1 rounded-full bg-slate-100">
-              ⏱️ {String(Math.floor(promoVideoSeconds / 60)).padStart(2, '0')}:
-              {String(promoVideoSeconds % 60).padStart(2, '0')} / 02:00
+            <span className="text-xs font-mono font-bold text-slate-600 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span>720p HD</span>
+              <span>•</span>
+              <span>
+                {String(Math.floor(promoVideoSeconds / 60)).padStart(2, '0')}:
+                {String(promoVideoSeconds % 60).padStart(2, '0')} / 02:00
+              </span>
             </span>
 
             <button
@@ -271,7 +280,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               ) : (
                 <>
                   <ArrowRight className="w-4 h-4" />
-                  <span>Videoni Ko'rish (2 min)</span>
+                  <span>Videoni Ko'rish (720p)</span>
                 </>
               )}
             </button>
@@ -668,9 +677,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
         {/* Subject Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-          {subjectsList.slice(0, 7).map((sub) => (
+          {subjectsList.slice(0, 7).map((sub, sIdx) => (
             <button
-              key={sub}
+              key={`home_subj_${sub}_${sIdx}`}
               type="button"
               onClick={() => setSelectedSubject(sub)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
@@ -685,9 +694,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {filteredTests.slice(0, 6).map((test) => (
+          {filteredTests.slice(0, 6).map((test, tIdx) => (
             <div
-              key={test.id}
+              key={`home_test_${test.id}_${tIdx}`}
               onClick={() => onSelectTest(test)}
               className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group"
             >

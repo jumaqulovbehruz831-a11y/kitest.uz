@@ -258,8 +258,8 @@ export const ProblemList: React.FC<ProblemListProps> = ({
               className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-white focus:outline-none focus:border-sky-500"
             >
               <option value="all">Barcha turkumlar / fanlar</option>
-              {uniqueSubjects.map((sub) => (
-                <option key={sub} value={sub}>
+              {uniqueSubjects.filter(Boolean).map((sub, idx) => (
+                <option key={`prob_sub_${sub}_${idx}`} value={sub}>
                   {sub}
                 </option>
               ))}

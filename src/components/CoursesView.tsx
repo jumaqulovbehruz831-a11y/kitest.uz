@@ -714,8 +714,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   onChange={(e) => setCourseSubject(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white"
                 >
-                  {SUBJECT_OPTIONS.map((subj) => (
-                    <option key={subj} value={subj}>
+                  {SUBJECT_OPTIONS.map((subj, idx) => (
+                    <option key={`crs_opt_${subj}_${idx}`} value={subj}>
                       {subj}
                     </option>
                   ))}
@@ -1098,9 +1098,9 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       {/* SUBJECT FILTER & MAIN COURSES PLAYER WORKSPACE                        */}
       {/* ===================================================================== */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
-        {['Barchasi', ...SUBJECT_OPTIONS].map((subj) => (
+        {['Barchasi', ...SUBJECT_OPTIONS].map((subj, idx) => (
           <button
-            key={subj}
+            key={`filter_btn_${subj}_${idx}`}
             onClick={() => setSubjectFilter(subj)}
             className={`py-2 px-3.5 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${
               subjectFilter === subj

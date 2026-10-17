@@ -1729,10 +1729,10 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
         soundEnabled={soundEnabled}
       />
 
-      {/* UCHADIGAN VARRAK VA EMOTSIYALAR (Soaring Kites & Emotions in the Sky) */}
+      {/* UCHADIGAN VARRAK VA EMOTSIYALAR (Faqat harakat yoki so'z ustiga kelganda paydo bo'ladi) */}
       <FlyingKitesAndEmotionsOverlay
         soundEnabled={soundEnabled}
-        enableAmbientKites={true}
+        enableAmbientKites={false}
       />
 
       {/* ROTATING ACTION LOADER - Spinning animation when creating account or logging in */}

@@ -1316,9 +1316,9 @@ export const CertificatesStoreModal: React.FC<CertificatesStoreModalProps> = ({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {myPurchasedCerts.map((item) => (
+                  {myPurchasedCerts.map((item, idx) => (
                     <div
-                      key={item.id}
+                      key={`store_purchased_${item.id || item.serialNumber}_${idx}`}
                       className="p-5 rounded-2xl bg-slate-950 border-2 border-amber-500/60 flex flex-col justify-between gap-4"
                     >
                       <div className="flex items-start gap-3.5">
@@ -1352,9 +1352,9 @@ export const CertificatesStoreModal: React.FC<CertificatesStoreModalProps> = ({
                     </div>
                   ))}
 
-                  {myPerfectSubmissions.map((sub) => (
+                  {myPerfectSubmissions.map((sub, idx) => (
                     <div
-                      key={sub.id}
+                      key={`store_perfect_${sub.id || sub.testId}_${idx}`}
                       className="p-5 rounded-2xl bg-slate-950 border-2 border-emerald-500/50 flex flex-col justify-between gap-4"
                     >
                       <div className="flex items-start gap-3.5">

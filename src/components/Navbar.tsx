@@ -28,6 +28,7 @@ import {
   RefreshCw,
   Crown,
   Sparkles,
+  Send,
 } from 'lucide-react';
 
 export type NavTab =
@@ -256,7 +257,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {/* Matching Platform Modules */}
                       {matchedModules.map((m) => (
                         <button
-                          key={m.id}
+                          key={`nav_mod_${m.id}`}
                           type="button"
                           onMouseDown={() => {
                             setCurrentTab(m.tab);
@@ -277,7 +278,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {/* Matching Tests */}
                       {matched.map((t) => (
                         <button
-                          key={t.id}
+                          key={`nav_test_${t.id}`}
                           type="button"
                           onMouseDown={() => {
                             if (onSelectTest) {
@@ -311,8 +312,46 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
       </div>
 
-      {/* Right Controls matching image.png: Notification (3), Help Circle, User Avatar */}
-      <div className="flex items-center gap-3 shrink-0">
+      {/* Right Controls matching image.png */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Telegram Channel Button (t.me/kitestai) */}
+        <a
+          href="https://t.me/kitestai"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="py-1.5 px-3 rounded-full bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 hover:text-sky-700 border border-sky-500/25 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+          title="Rasmiy Telegram Kanalimiz: t.me/kitestai"
+        >
+          <Send className="w-3.5 h-3.5 text-sky-500" />
+          <span className="hidden md:inline font-mono text-[11px]">@kitestai</span>
+        </a>
+
+        {/* Kun / Tun Rejimi (Light / Dark mode toggle) */}
+        {onToggleTheme && (
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className={`py-1.5 px-2.5 sm:px-3 rounded-full text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border ${
+              theme === 'light'
+                ? 'bg-amber-100/80 hover:bg-amber-200/80 text-amber-800 border-amber-300 shadow-xs'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+            }`}
+            title={theme === 'light' ? 'Tun rejimiga o‘tish (Dark Mode)' : 'Kun rejimiga o‘tish (Light Mode)'}
+          >
+            {theme === 'light' ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-600" />
+                <span className="hidden sm:inline text-[11px]">Kun</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-sky-300" />
+                <span className="hidden sm:inline text-[11px]">Tun</span>
+              </>
+            )}
+          </button>
+        )}
+
         {isMainAdmin && (
           <button
             type="button"

@@ -15,6 +15,7 @@
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/canvas-confetti": "^1.9.0",
+    "@types/three": "^0.186.0",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.1.1",
     "@vladmandic/face-api": "^1.7.15",
@@ -26,6 +27,7 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "three": "^0.186.1",
     "vite": "^8.3.0",
     "ws": "^8.21.3"
   },

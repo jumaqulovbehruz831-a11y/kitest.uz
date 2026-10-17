@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import confetti from 'canvas-confetti';
 import {
   User,
   Submission,
@@ -175,6 +176,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 });
+  const [showSaveEmotes, setShowSaveEmotes] = useState(false);
 
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -476,11 +478,25 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       if (!res.ok) {
         setError(data.error || 'Saqlashda xatolik');
       } else {
-        playKitestSound('success', soundEnabled);
+        playKitestSound('victory', soundEnabled);
+        try {
+          confetti({
+            particleCount: 120,
+            spread: 90,
+            origin: { y: 0.55 },
+            colors: ['#38bdf8', '#ec4899', '#f59e0b', '#10b981', '#a855f7'],
+          });
+        } catch {}
+        setShowSaveEmotes(true);
         onUpdateUser(data.user, Array.isArray(data.users) ? data.users : undefined);
-        setMessage("Profil ma'lumotlari va rasmingiz muvaffaqiyatli saqlandi!");
+        setMessage("🎉 Profil ma'lumotlari muvaffaqiyatli saqlandi!");
         setNewPassword('');
         setConfirmNewPassword('');
+        // Smoothly close the modal after celebration emotion
+        setTimeout(() => {
+          setShowSaveEmotes(false);
+          onClose();
+        }, 1400);
       }
     } catch {
       setError('Server xatoligi');
@@ -515,7 +531,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           initial={{ opacity: 0, scale: 0.94, y: 14 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 14 }}
-          className={`max-w-3xl w-full rounded-2xl bg-slate-900 border-2 shadow-2xl overflow-hidden my-auto ${
+          className={`max-w-3xl w-full rounded-2xl bg-slate-900 border-2 shadow-2xl overflow-hidden my-auto relative ${
             isOwnerAdmin
               ? 'border-amber-500/70 shadow-amber-500/10'
               : isCreator
@@ -523,6 +539,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               : 'border-slate-800'
           }`}
         >
+          {/* Varaq (Paper Sheet) Watermark Background */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.035] bg-repeat z-0"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15 10h20l10 10v25a5 5 0 0 1-5 5H15a5 5 0 0 1-5-5V15a5 5 0 0 1 5-5z' fill='none' stroke='%2338bdf8' stroke-width='2'/%3E%3Cpath d='M35 10v10h10' fill='none' stroke='%2338bdf8' stroke-width='2'/%3E%3C/svg%3E")`,
+              backgroundSize: '48px 48px',
+            }}
+          />
           {/* Top Profile Header */}
           <div
             className={`p-5 sm:p-6 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
@@ -662,15 +686,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => handleSave()}
-                disabled={saving}
-                className="py-2 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{saving ? 'Saqlanmoqda...' : 'Saqlash'}</span>
-              </button>
-              <button
-                type="button"
                 onClick={onClose}
                 className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 flex items-center gap-1"
               >
@@ -777,7 +792,45 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
           {/* TAB 1: EDIT PROFILE */}
           {activeTab === 'overview_edit' && (
-            <form onSubmit={handleSave} className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+            <form onSubmit={handleSave} className="p-6 space-y-4 max-h-[65vh] overflow-y-auto relative">
+              {/* SAVED CELEBRATION EMOTION OVERLAY (Saqlash bosilganda emotsiya chiqishi) */}
+              <AnimatePresence>
+                {showSaveEmotes && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.85, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.85, y: -10 }}
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+                  >
+                    <div className="p-6 rounded-3xl bg-slate-900/95 border-2 border-emerald-400 shadow-[0_0_60px_rgba(16,185,129,0.45)] flex flex-col items-center text-center max-w-sm">
+                      <div className="flex items-center gap-2 text-3xl mb-3 animate-bounce">
+                        <span>🎉</span>
+                        <span>🚀</span>
+                        <span>⭐</span>
+                        <span>🏆</span>
+                        <span>✨</span>
+                      </div>
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/60 flex items-center justify-center mb-3 text-emerald-400">
+                        <CheckCircle2 className="w-8 h-8 animate-pulse" />
+                      </div>
+                      <h3 className="text-base font-black text-white">
+                        Ma'lumotlar Muvaffaqiyatli Saqlandi!
+                      </h3>
+                      <p className="text-xs text-slate-300 mt-1">
+                        Barcha profil ma'lumotlari, rasm va Face ID xavfsiz saqlandi.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowSaveEmotes(false)}
+                        className="mt-4 py-2 px-5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-md cursor-pointer"
+                      >
+                        Ajoyib! Davom etish ✨
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {message && (
                 <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/50 text-xs text-emerald-200 flex items-center gap-2 font-semibold">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -792,156 +845,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </div>
               )}
 
-              {/* ======================================================== */}
-              {/* 0. INTERACTIVE 3D HOLOGRAPHIC ID CARD ("3D formatda bo'lsin") */}
-              {/* ======================================================== */}
-              <div
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = (e.clientX - rect.left) / rect.width - 0.5;
-                  const y = (e.clientY - rect.top) / rect.height - 0.5;
-                  setTilt({ rotateX: -y * 14, rotateY: x * 18 });
-                }}
-                onMouseLeave={() => setTilt({ rotateX: 0, rotateY: 0 })}
-                style={{ perspective: '1000px' }}
-                className="w-full"
-              >
-                <motion.div
-                  animate={{
-                    rotateX: tilt.rotateX,
-                    rotateY: tilt.rotateY,
-                  }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                  style={{ transformStyle: 'preserve-3d' }}
-                  className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-950/90 via-slate-900 to-sky-950/90 border-2 border-sky-400/50 shadow-[0_18px_45px_rgba(14,165,233,0.22)] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <img
-                        src={avatarUrl || KIDTEST_LOGO_DATA_URL}
-                        alt={name}
-                        className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shadow-xl"
-                      />
-                      <span className="absolute -top-2 -left-2 text-lg">
-                        {STAR_COLOR_META[user.starColor || 'blue']?.starEmoji || '💙'}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-[10px] font-mono font-black text-sky-300">
-                          3D PROFIL KARTASI
-                        </span>
-                        <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-[10px] font-mono font-black text-amber-300">
-                          {user.starRankTitle || 'Noob'} · {user.scoreMultiplier || 1}x BALL
-                        </span>
-                      </div>
-                      <div className="text-base font-black text-white mt-1">
-                        {name || user.name} (@{username || user.username})
-                      </div>
-                      <div className="text-[11px] text-slate-300 font-mono">
-                        {institution || 'Maktab/OTM kiritilmagan'} · {region}
-                      </div>
-                    </div>
+              {/* 1. PROFIL RASMI VA FACE ID BIOMETRIKASI (TOZA VA ZAMONAVIY) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Profil Rasmi */}
+                <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-sky-400" />
+                    <span>Profil Rasmi</span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    {onOpenCertificatesStore && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onOpenCertificatesStore();
-                        }}
-                        className="py-2 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md"
-                      >
-                        <Flame className="w-3.5 h-3.5" />
-                        <span>⭐ Yulduz / Rank Do'koni</span>
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* ======================================================== */}
-              {/* TOP QUICK FACE ID CARD IN EDIT PROFILE                   */}
-              {/* ======================================================== */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-slate-950 to-sky-950/60 border-2 border-emerald-400/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
-                <div className="flex items-center gap-3.5">
-                  {faceIdDataUrl ? (
-                    <img
-                      src={faceIdDataUrl}
-                      alt="Face ID"
-                      className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-400 shrink-0 shadow-md"
-                    />
-                  ) : (
-                    <div
-                      className={`w-14 h-14 rounded-2xl border flex items-center justify-center shrink-0 ${
-                        faceIdEnabled
-                          ? 'bg-emerald-500/20 border-emerald-400/50'
-                          : 'bg-sky-500/15 border-sky-400/40'
-                      }`}
-                    >
-                      <ScanFace
-                        className={`w-7 h-7 ${
-                          faceIdEnabled ? 'text-emerald-400' : 'text-sky-400'
-                        }`}
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-xs sm:text-sm font-black text-white flex flex-wrap items-center gap-2">
-                      <span>👁️ Hisob Face ID Biometrikasi (1-Saqlashda)</span>
-                      {faceIdEnabled ? (
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-mono font-bold">
-                          ✅ FACE ID KIRITILGAN
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-bold">
-                          ⚠️ FACE ID KIRITILMAGAN
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-300 mt-0.5">
-                      {faceIdEnabled
-                        ? "Face ID hisobingizga biriktirilgan. «Face ID O'zgartirish» tugmasini bosib 1-urinishda yangilashingiz mumkin."
-                        : "«Face ID Kiritish» tugmasini bosing — kamera yuzingizni 1-urinishdayoq ko'rib oladi va hisobingizga darhol saqlaydi."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError('');
-                      setMessage('');
-                      setIsFaceScannerOpen(true);
-                    }}
-                    className={`py-2.5 px-4 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer ${
-                      faceIdEnabled
-                        ? 'bg-amber-400 hover:bg-amber-300 text-slate-950'
-                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
-                    }`}
-                  >
-                    <ScanFace className="w-4 h-4" />
-                    <span>
-                      {faceIdEnabled
-                        ? "🔄 Face ID O'zgartirish"
-                        : '👁️ Face ID Kiritish'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* ======================================================== */}
-              {/* 1. PROFILE PICTURE STUDIO (PROFILGA RASM JOYLASH)        */}
-              {/* ======================================================== */}
-              <div className="p-4 rounded-2xl bg-slate-950 border border-sky-500/40 space-y-3.5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
                     <div
                       onClick={() => avatarFileInputRef.current?.click()}
-                      className="relative w-20 h-20 rounded-2xl bg-slate-900 border-2 border-sky-400 overflow-hidden shrink-0 cursor-pointer group shadow-lg"
+                      className="relative w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-slate-900 border-2 border-sky-400 overflow-hidden shrink-0 cursor-pointer group shadow-lg"
                     >
                       <img
                         src={avatarUrl || KIDTEST_LOGO_DATA_URL}
@@ -956,157 +872,179 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       </div>
                     </div>
 
-                    <div>
-                      <div className="text-xs sm:text-sm font-extrabold text-white flex items-center gap-1.5">
-                        <Camera className="w-4 h-4 text-sky-400" />
-                        <span>Profilga Shaxsiy Rasm Joylash</span>
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <input
+                          ref={avatarFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarFileChange}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          disabled={uploadingPhoto}
+                          onClick={() => avatarFileInputRef.current?.click()}
+                          className="py-1.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-[11px] font-extrabold text-white flex items-center gap-1 shadow-sm cursor-pointer"
+                        >
+                          <Upload className="w-3 h-3" />
+                          <span>Fayldan Tanlash</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleStartCamera}
+                          className="py-1.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[11px] font-extrabold text-white flex items-center gap-1 shadow-sm cursor-pointer"
+                        >
+                          <Camera className="w-3 h-3" />
+                          <span>{cameraOpen ? 'Yopish' : 'Kamera'}</span>
+                        </button>
+                        {avatarUrl && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAvatarUrl('');
+                              saveAvatarToServer('');
+                            }}
+                            className="py-1.5 px-2.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-500/40 text-[11px] font-semibold text-rose-200 flex items-center gap-1 cursor-pointer"
+                            title="Rasmni o'chirish"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Telefon galereyasidan, kompyuterdan yoki kameradan rasm yuklang.
-                      </p>
-                      <div className="text-[10px] font-mono text-emerald-400 mt-1">
+                      <div className="text-[10px] font-mono text-slate-400">
                         {uploadingPhoto
-                          ? '⏳ Rasm saqlanmoqda...'
+                          ? '⏳ Rasm yuklanmoqda...'
                           : avatarUrl
-                          ? '✅ Shaxsiy rasm o‘rnatilgan'
-                          : 'ℹ️ Hozircha standart emblema'}
+                          ? '✅ Rasm o‘rnatilgan'
+                          : 'ℹ️ Rasm yuklang yoki kameradan oling'}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      ref={avatarFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarFileChange}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      disabled={uploadingPhoto}
-                      onClick={() => avatarFileInputRef.current?.click()}
-                      className="py-2 px-3.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-xs font-extrabold text-white flex items-center gap-1.5 shadow-md"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>📸 Qurilmadan Rasm Tanlash</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleStartCamera}
-                      className="py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-extrabold text-white flex items-center gap-1.5 shadow-md"
-                    >
-                      {cameraOpen ? (
-                        <>
-                          <CameraOff className="w-3.5 h-3.5" />
-                          <span>Kamerani Yopish</span>
-                        </>
-                      ) : (
-                        <>
-                          <Camera className="w-3.5 h-3.5" />
-                          <span>📷 Kameradan Olish</span>
-                        </>
-                      )}
-                    </button>
-
-                    {avatarUrl && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAvatarUrl('');
-                          saveAvatarToServer('');
-                        }}
-                        className="py-2 px-3 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-500/40 text-xs font-semibold text-rose-200 flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Rasmni O'chirish</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Live Camera Selfie Box if opened */}
-                {cameraOpen && (
-                  <div className="p-3 rounded-xl bg-slate-900 border border-indigo-500/40 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                  {/* Kamera Selfie oynasi */}
+                  {cameraOpen && (
+                    <div className="p-2.5 rounded-xl bg-slate-900 border border-indigo-500/40 flex items-center justify-between gap-2.5">
                       <video
                         ref={videoRef}
                         autoPlay
                         playsInline
                         muted
-                        className="w-28 h-28 rounded-xl object-cover bg-black border border-indigo-400 scale-x-[-1]"
+                        className="w-20 h-20 rounded-xl object-cover bg-black border border-indigo-400 scale-x-[-1]"
                       />
-                      <div className="text-xs space-y-1">
-                        <div className="font-bold text-white">Kameradan profil rasmi olish</div>
-                        <p className="text-[11px] text-slate-400">
-                          Yuzingizni markazga to'g'rilab, "Suratga olish" tugmasini bosing.
-                        </p>
+                      <div className="flex flex-col gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleCaptureCameraPhoto}
+                          className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black flex items-center gap-1 cursor-pointer"
+                        >
+                          <Camera className="w-3 h-3" />
+                          <span>Suratga Olish</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={stopCamera}
+                          className="py-1 px-2.5 rounded-xl bg-slate-800 text-slate-300 text-[10px] cursor-pointer"
+                        >
+                          Bekor qilish
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleCaptureCameraPhoto}
-                        className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5"
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                        <span>Suratga Olish va Saqlash</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={stopCamera}
-                        className="py-2 px-3 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold"
-                      >
-                        Bekor qilish
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">
-                    Yoki rasm havolasini (URL) kiriting:
-                  </label>
-                  <input
-                    type="text"
-                    value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="https://example.com/my-photo.jpg"
-                    className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white font-mono"
-                  />
+                {/* Face ID Biometrikasi (Yagona toza blok) */}
+                <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5">
+                        <ScanFace className="w-4 h-4 text-emerald-400" />
+                        <span>Face ID Biometrikasi</span>
+                      </span>
+                      {faceIdEnabled ? (
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-mono font-bold">
+                          ✅ KIRITILGAN
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-bold">
+                          ⚠️ KIRITILMAGAN
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {faceIdEnabled
+                        ? "Hisobingizga Face ID biriktirilgan. Parolsiz tezkor kirish uchun ishlatiladi."
+                        : "Kamera orqali yuzingizni 1-urinishda taniting va parolsiz kiring."}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError('');
+                        setMessage('');
+                        setIsFaceScannerOpen(true);
+                      }}
+                      className={`py-2 px-3.5 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer flex-1 justify-center ${
+                        faceIdEnabled
+                          ? 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+                          : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                      }`}
+                    >
+                      <ScanFace className="w-4 h-4" />
+                      <span>
+                        {faceIdEnabled ? "🔄 Face ID O'zgartirish" : '👁️ Face ID Kiritish'}
+                      </span>
+                    </button>
+                    {faceIdEnabled && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setFaceIdDataUrl('');
+                          setFaceDescriptor([]);
+                          setFaceIdEnabled(false);
+                          try {
+                            const res = await fetch(`/api/auth/profile/${user.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                clearFaceId: true,
+                                faceIdDataUrl: '',
+                                faceIdEnabled: false,
+                              }),
+                            });
+                            const data = await res.json();
+                            if (res.ok && data.user) {
+                              onUpdateUser(
+                                data.user,
+                                Array.isArray(data.users) ? data.users : undefined
+                              );
+                            }
+                          } catch {}
+                          setMessage("Face ID o'chirildi.");
+                        }}
+                        className="py-2 px-3 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-500/40 text-rose-200 text-xs font-bold cursor-pointer"
+                        title="Face ID ni o'chirish"
+                      >
+                        O'chirish
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* ======================================================== */}
-              {/* 2. ISM, USERNAME & EMAIL (FAQAT 1 MARTA ISHLATILADI)     */}
-              {/* ======================================================== */}
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span>Shaxsiy Identifikatorlar (Ism, Username va Email)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-[10px] font-mono text-amber-300 font-bold">
-                      Faqat 1 marta foydalaniladi
-                    </span>
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md transition-all"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>{saving ? 'Saqlanmoqda...' : 'Saqlash'}</span>
-                    </button>
-                  </div>
+              {/* 2. ASOSIY MA'LUMOTLAR (ISM, USERNAME, EMAIL) */}
+              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+                <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <UserIcon className="w-4 h-4 text-sky-400" />
+                  <span>Shaxsiy Ma'lumotlar</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                      <UserIcon className="w-3.5 h-3.5 text-sky-400" />
-                      <span>Ism va Familiya *</span>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Ism va Familiya *
                     </label>
                     <input
                       type="text"
@@ -1131,9 +1069,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                      <Mail className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Email manzili *</span>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Email manzili *
                     </label>
                     <input
                       type="email"
@@ -1144,248 +1081,132 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     />
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  Har bir <strong>Username</strong> va <strong>Email</strong> tizimda faqat bir marta ishlatiladi. Agar hisobingizni o'chirsangiz (Delete Account), ular bo'shatiladi.
-                </p>
               </div>
 
-              {/* ======================================================== */}
-              {/* 3. HUDUD, MUASSASA VA QO'SHIMCHA MA'LUMOTLAR             */}
-              {/* ======================================================== */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Viloyat / Hudud</span>
-                  </label>
-                  <select
-                    value={region}
-                    onChange={(e) => handleRegionChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white"
-                  >
-                    {REGIONS_LIST.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
+              {/* 3. HUDUD VA TA'LIM MUASSASASI */}
+              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+                <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-emerald-400" />
+                  <span>Hudud va Ta'lim</span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Tuman / Shahar
-                  </label>
-                  <select
-                    value={district}
-                    onChange={(e) => setDistrict(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white"
-                  >
-                    {currentDistricts.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                    <Building2 className="w-3.5 h-3.5 text-violet-400" />
-                    <span>Maktab / OTM / Muassasa</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={institution}
-                    onChange={(e) => setInstitution(e.target.value)}
-                    placeholder="Masalan: 15-IDUM / TATU"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                    <Send className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Telegram manzili</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={telegram}
-                    onChange={(e) => setTelegram(e.target.value)}
-                    placeholder="@username"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Qisqacha Bio / Unvon
-                  </label>
-                  <input
-                    type="text"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Olimpiada ishtirokchisi..."
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white"
-                  />
-                </div>
-              </div>
-
-              {/* ======================================================== */}
-              {/* FACE ID BIOMETRIC SECURITY IN EDIT PROFILE               */}
-              {/* ("profil da editda face id kiritish boladi kiritilgan bolsa o'zgartirish qilinadi") */}
-              {/* ======================================================== */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-950/60 via-slate-950 to-emerald-950/40 border-2 border-sky-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
-                <div className="flex items-center gap-3.5">
-                  {faceIdDataUrl ? (
-                    <img
-                      src={faceIdDataUrl}
-                      alt="Face ID"
-                      className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-400 shrink-0 shadow-md"
-                    />
-                  ) : (
-                    <div
-                      className={`w-14 h-14 rounded-2xl border flex items-center justify-center shrink-0 ${
-                        faceIdEnabled
-                          ? 'bg-emerald-500/20 border-emerald-400/50'
-                          : 'bg-sky-500/15 border-sky-400/40'
-                      }`}
-                    >
-                      <ScanFace
-                        className={`w-7 h-7 ${
-                          faceIdEnabled ? 'text-emerald-400' : 'text-sky-400'
-                        }`}
-                      />
-                    </div>
-                  )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <div className="text-xs sm:text-sm font-black text-white flex flex-wrap items-center gap-2">
-                      <span>👁️ Hisob Face ID Biometrikasi (Edit Profil)</span>
-                      {faceIdEnabled ? (
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-mono font-bold">
-                          ✅ FACE ID KIRITILGAN
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-bold">
-                          ⚠️ FACE ID KIRITILMAGAN
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-300 mt-0.5">
-                      {faceIdEnabled
-                        ? "Hisobingizga Face ID kiritilgan. «Face ID O'zgartirish» tugmasi orqali 1-saqlashda yangi yuzga o'zgartirishingiz mumkin."
-                        : "1-saqlashda yuzingizni ko'rib oladi va hisobingizga saqlaydi: parolsiz kirish va parolni tiklash imkonini beradi."}
-                    </p>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Viloyat / Hudud
+                    </label>
+                    <select
+                      value={region}
+                      onChange={(e) => handleRegionChange(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white"
+                    >
+                      {REGIONS_LIST.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Tuman / Shahar
+                    </label>
+                    <select
+                      value={district}
+                      onChange={(e) => setDistrict(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white"
+                    >
+                      {currentDistricts.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError('');
-                      setMessage('');
-                      setIsFaceScannerOpen(true);
-                    }}
-                    className={`py-2.5 px-4 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer ${
-                      faceIdEnabled
-                        ? 'bg-amber-400 hover:bg-amber-300 text-slate-950'
-                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
-                    }`}
-                  >
-                    <ScanFace className="w-4 h-4" />
-                    <span>
-                      {faceIdEnabled
-                        ? "🔄 Face ID O'zgartirish"
-                        : '👁️ Face ID Kiritish'}
-                    </span>
-                  </button>
-                  {faceIdEnabled && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setFaceIdDataUrl('');
-                        setFaceDescriptor([]);
-                        setFaceIdEnabled(false);
-                        try {
-                          const res = await fetch(`/api/auth/profile/${user.id}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              clearFaceId: true,
-                              faceIdDataUrl: '',
-                              faceIdEnabled: false,
-                            }),
-                          });
-                          const data = await res.json();
-                          if (res.ok && data.user) {
-                            onUpdateUser(
-                              data.user,
-                              Array.isArray(data.users) ? data.users : undefined
-                            );
-                          }
-                        } catch {}
-                        setMessage("Face ID o'chirildi. Istalgan vaqt qaytadan Face ID kiritishingiz mumkin.");
-                      }}
-                      className="py-2.5 px-3 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-500/40 text-rose-200 text-xs font-bold cursor-pointer"
-                    >
-                      O'chirish
-                    </button>
-                  )}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Maktab / OTM
+                    </label>
+                    <input
+                      type="text"
+                      value={institution}
+                      onChange={(e) => setInstitution(e.target.value)}
+                      placeholder="Masalan: 15-IDUM"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Telegram
+                    </label>
+                    <input
+                      type="text"
+                      value={telegram}
+                      onChange={(e) => setTelegram(e.target.value)}
+                      placeholder="@username"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Bio / Qisqacha
+                    </label>
+                    <input
+                      type="text"
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Olimpiada ishtirokchisi..."
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* ======================================================== */}
-              {/* PASSWORD & CONFIRM PASSWORD ("Confirm password qo'sh")   */}
-              {/* ======================================================== */}
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+              {/* 4. PAROL VA TASDIQLASH (AGAR PAROLNI O'ZGARTIRMOQCHI BO'LSA) */}
+              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="text-xs font-extrabold text-white flex items-center gap-1.5">
                     <Lock className="w-4 h-4 text-sky-400" />
-                    <span>Parolni Yangilash va Tasdiqlash (Confirm Password)</span>
+                    <span>Parolni Yangilash (Ixtiyoriy)</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {newPassword && (
-                      <span
-                        className={`text-[11px] font-mono font-bold ${
-                          newPassword === confirmNewPassword
-                            ? 'text-emerald-400'
-                            : 'text-rose-400'
-                        }`}
-                      >
-                        {newPassword === confirmNewPassword
-                          ? '✅ Parollar mos keldi'
-                          : '⚠️ Parollar mos emas'}
-                      </span>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md transition-all"
+                  {newPassword && (
+                    <span
+                      className={`text-[11px] font-mono font-bold ${
+                        newPassword === confirmNewPassword
+                          ? 'text-emerald-400'
+                          : 'text-rose-400'
+                      }`}
                     >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>{saving ? 'Saqlanmoqda...' : 'Parolni Saqlash'}</span>
-                    </button>
-                  </div>
+                      {newPassword === confirmNewPassword
+                        ? '✅ Parollar mos keldi'
+                        : '⚠️ Parollar mos emas'}
+                    </span>
+                  )}
                 </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                      Yangi parol (kamida 4 belgi)
+                      Yangi parol
                     </label>
                     <div className="relative">
                       <input
                         type={showNewPass ? 'text' : 'password'}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Yangi parol kiriting..."
+                        placeholder="Yangi parol (kamida 4 belgi)"
                         className="w-full pl-3 pr-9 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white focus:border-sky-400 focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPass(!showNewPass)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
                       >
                         {showNewPass ? (
                           <EyeOff className="w-4 h-4" />
@@ -1398,20 +1219,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                      Parolni tasdiqlang (Confirm Password) *
+                      Parolni tasdiqlash
                     </label>
                     <div className="relative">
                       <input
                         type={showConfirmPass ? 'text' : 'password'}
                         value={confirmNewPassword}
                         onChange={(e) => setConfirmNewPassword(e.target.value)}
-                        placeholder="Yangi parolni qayta kiriting..."
+                        placeholder="Yangi parolni qayta kiriting"
                         className="w-full pl-3 pr-9 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white focus:border-sky-400 focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPass(!showConfirmPass)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
                       >
                         {showConfirmPass ? (
                           <EyeOff className="w-4 h-4" />
@@ -1424,134 +1245,64 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </div>
               </div>
 
-              {/* ======================================================== */}
-              {/* KITEST PREMIUM & CREATOR REQUEST ("Premium qo'sh opsiyasi") */}
-              {/* ======================================================== */}
-              {!isOwnerAdmin && (
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-950 to-slate-900 border border-amber-500/40 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-1.5">
-                        <Crown className="w-4 h-4 text-amber-400" />
-                        <span>👑 Premium va Yaratuvchi (Creator) Qo'shish So'rovi</span>
-                      </div>
-                      <p className="text-[11px] text-slate-300 mt-0.5">
-                        Premium olsangiz: Test yaratish, Video Kurs joylash, 3D Kitob chop etish va maxsus imtiyozlar ochiladi.
-                      </p>
-                    </div>
+              {/* 5. PREMIUM VA HISOBNI O'CHIRISH */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                {!isOwnerAdmin && (
+                  <div className="flex-1 w-full sm:w-auto">
                     {isCreator ? (
-                      <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-xs font-black">
-                        ✅ Premium & Yaratuvchi Faol
+                      <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-xs font-black flex items-center gap-1.5 w-fit">
+                        <Crown className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Premium & Test Yaratuvchi Faol</span>
                       </span>
                     ) : user.creatorRequestStatus === 'pending' ? (
-                      <span className="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs font-black">
-                        ⏳ Premium So'rovingiz Admin Tasdiqlashida
+                      <span className="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs font-black flex items-center gap-1.5 w-fit">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Premium So'rovi Kutilmoqda</span>
                       </span>
                     ) : (
                       <button
                         type="button"
                         disabled={requestingPremium}
                         onClick={handleRequestPremiumCreator}
-                        className="py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 shrink-0"
+                        className="py-1.5 px-3.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
                       >
-                        {requestingPremium
-                          ? 'Yuborilmoqda...'
-                          : "👑 Premium Qo'shish So'rovini Yuborish"}
+                        <Crown className="w-3.5 h-3.5 text-amber-400" />
+                        <span>👑 Premium & Yaratuvchi So'rovi</span>
                       </button>
                     )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* ======================================================== */}
-              {/* 4. DELETE ACCOUNT (HISOBNI O'CHIRISH)                    */}
-              {/* ======================================================== */}
-              <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/40 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs font-extrabold text-rose-300 flex items-center gap-1.5">
-                      <Trash2 className="w-4 h-4 text-rose-400" />
-                      <span>Delete Account (Hisobni Butunlay O'chirish)</span>
-                    </div>
-                    <p className="text-[11px] text-slate-300 mt-0.5">
-                      Hisobingizni o'chirsangiz, barcha ma'lumotlaringiz o'chiriladi hamda <strong>@{user.username}</strong> va <strong>{user.email}</strong> qayta ro'yxatdan o'tish uchun bo'shatiladi.
-                    </p>
-                  </div>
-
-                  {!showDeleteConfirm && (
+                <div>
+                  {!showDeleteConfirm ? (
                     <button
                       type="button"
                       onClick={() => setShowDeleteConfirm(true)}
-                      className="py-2 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold flex items-center gap-1.5 shrink-0 shadow-md"
+                      className="py-1.5 px-3 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete Account</span>
+                      <span>Hisobni o'chirish</span>
                     </button>
-                  )}
-                </div>
-
-                {showDeleteConfirm && (
-                  <div className="p-3.5 rounded-xl bg-slate-950 border border-rose-500/60 space-y-3">
-                    <div className="flex items-start gap-2.5 text-xs text-rose-200">
-                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-extrabold text-white">
-                          Haqiqatan ham hisobingizni o'chirmoqchimisiz?
-                        </div>
-                        <p className="text-[11px] text-slate-300 mt-0.5">
-                          Ushbu amal qaytarilmaydi. Hisob o'chirilgach, <strong>@{user.username}</strong> va <strong>{user.email}</strong> bo'shaydi.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowDeleteConfirm(false)}
-                        className="py-1.5 px-3.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200"
-                      >
-                        Bekor qilish
-                      </button>
+                  ) : (
+                    <div className="flex items-center gap-2 bg-rose-950/60 p-2 rounded-xl border border-rose-500/40">
+                      <span className="text-[11px] text-rose-300">Rostdan ham o'chirasizmi?</span>
                       <button
                         type="button"
                         disabled={deletingAccount}
                         onClick={handleDeleteAccountConfirm}
-                        className="py-1.5 px-4 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-extrabold text-white flex items-center gap-1.5"
+                        className="py-1 px-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>
-                          {deletingAccount
-                            ? "O'chirilmoqda..."
-                            : "Ha, Hisobni O'chirish (Delete Account)"}
-                        </span>
+                        {deletingAccount ? "O'chirilmoqda..." : "Ha, o'chirish"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="py-1 px-2 rounded-lg bg-slate-800 text-slate-300 text-[11px] cursor-pointer"
+                      >
+                        Yo'q
                       </button>
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* STICKY SAVE BAR AT BOTTOM OF EDIT PROFILE */}
-              <div className="sticky bottom-0 z-20 -mx-6 -mb-6 p-4 bg-slate-950/95 backdrop-blur-xl border-t border-emerald-500/40 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs text-slate-300 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>O'zgarishlarni kiritgach, <strong className="text-emerald-300">Saqlash</strong> tugmasini bosing</span>
-                </div>
-                <div className="flex items-center gap-2.5 ml-auto">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200"
-                  >
-                    Yopish
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="py-2.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>{saving ? 'Saqlanmoqda...' : "💾 Barcha O'zgarishlarni Saqlash"}</span>
-                  </button>
+                  )}
                 </div>
               </div>
             </form>
@@ -1597,9 +1348,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(user.purchasedCertificates || []).map((p) => (
+                  {(user.purchasedCertificates || []).map((p, pIdx) => (
                     <div
-                      key={p.id}
+                      key={`purchased_cert_${p.id || p.serialNumber}_${pIdx}`}
                       className="p-4 rounded-2xl bg-slate-950 border-2 border-amber-500/60 flex flex-col justify-between gap-4"
                     >
                       <div className="space-y-1.5">
@@ -1647,11 +1398,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     </div>
                   ))}
 
-                  {perfectSubmissions.map((sub) => {
+                  {perfectSubmissions.map((sub, sIdx) => {
                     const certData = buildCertificateFromSubmission(sub);
                     return (
                       <div
-                        key={sub.id}
+                        key={`perfect_cert_${sub.id || sub.testId}_${sIdx}`}
                         className="p-4 rounded-2xl bg-slate-950 border-2 border-emerald-500/50 flex flex-col justify-between gap-4"
                       >
                         <div className="space-y-1.5">
@@ -1698,9 +1449,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   Siz hali birorta ham test topshirmagansiz.
                 </div>
               ) : (
-                mySubmissions.map((sub) => (
+                mySubmissions.map((sub, hIdx) => (
                   <div
-                    key={sub.id}
+                    key={`hist_sub_${sub.id}_${hIdx}`}
                     className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-3"
                   >
                     <div>

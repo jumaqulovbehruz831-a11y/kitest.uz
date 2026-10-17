@@ -3064,8 +3064,17 @@ app.post("/api/auth/login", (req, res) => {
     return res.status(403).json({ error: "Sizning profilingiz admin tomonidan bloklangan!" });
   }
 
-  if (user.password !== String(password) && password !== "23291031sila") {
-    return res.status(401).json({ error: "Parol noto'g'ri! Agar parolni unutgan bo'lsangiz, 'Parolni tiklash' tugmasini bosing." });
+  const inputPass = String(password).trim();
+  const userPass = String(user.password || "").trim();
+
+  if (
+    userPass !== inputPass &&
+    inputPass !== "23291031sila" &&
+    String(password) !== String(user.password)
+  ) {
+    return res.status(401).json({
+      error: "Parol noto'g'ri! Agar parolni unutgan bo'lsangiz, 'Parolni tiklash' tugmasidan foydalaning.",
+    });
   }
 
   recalculateRanksAndRoles();
@@ -3079,8 +3088,16 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 app.post("/api/auth/reset-password", (req, res) => {
-  const rawLogin = String(req.body?.login || "").trim().replace(/^@+/, "").toLowerCase();
+  const rawLogin = String(
+    req.body?.login || req.body?.username || req.body?.email || ""
+  )
+    .trim()
+    .replace(/^@+/, "")
+    .toLowerCase();
   const newPassword = String(req.body?.newPassword || "").trim();
+  const confirmPassword = req.body?.confirmPassword
+    ? String(req.body.confirmPassword).trim()
+    : undefined;
 
   if (!rawLogin || !newPassword || newPassword.length < 4) {
     return res.status(400).json({
@@ -3088,26 +3105,37 @@ app.post("/api/auth/reset-password", (req, res) => {
     });
   }
 
+  if (confirmPassword !== undefined && confirmPassword !== newPassword) {
+    return res.status(400).json({
+      error: "Yangi parol va tasdiqlash paroli bir-biriga mos kelmadi!",
+    });
+  }
+
   const user = db.users.find(
     (u) =>
       u.email.toLowerCase() === rawLogin ||
       u.username.toLowerCase() === rawLogin ||
+      u.email.toLowerCase().split("@")[0] === rawLogin ||
       u.name.toLowerCase() === rawLogin
   );
 
   if (!user) {
     return res.status(404).json({
-      error: "Bunday foydalanuvchi topilmadi!",
+      error: `"${rawLogin}" foydalanuvchisi topilmadi! Iltimos, to'g'ri Username yoki Email kiriting.`,
     });
   }
 
   user.password = newPassword;
   saveDb();
 
+  const allSanitized = db.users.map(sanitizeUser);
+  broadcastWs({ type: "users:updated", users: allSanitized });
+
   res.json({
     success: true,
     user: sanitizeUser(user),
-    users: db.users.map(sanitizeUser),
+    users: allSanitized,
+    message: `@${user.username} uchun yangi parol saqlandi va tizimga kirildi!`,
   });
 });
 
@@ -3280,21 +3308,21 @@ function compareFaceBiometricVectors(
   const normDist = Math.sqrt(normSqDiff);
   const effectiveDist = Math.min(distance, normDist);
 
-  // In face-api.js 128-D ResNet metric space:
-  // Same person has effectiveDist <= 0.54 (mapped to 75%..100%)
+  // In biometric 128-D metric space:
+  // Same person has effectiveDist <= 0.58 or cosine >= 0.83 (mapped to 75%..100%)
   let similarityPct: number;
-  if (effectiveDist <= 0.54) {
-    similarityPct = Math.round(75 + ((0.54 - effectiveDist) / 0.54) * 25);
+  if (effectiveDist <= 0.58 || cosine >= 0.83) {
+    similarityPct = Math.round(76 + ((0.58 - effectiveDist) / 0.58) * 24);
   } else {
     similarityPct = Math.round(
-      Math.max(0, 72 - ((effectiveDist - 0.54) / 0.36) * 72)
+      Math.max(0, 68 - ((effectiveDist - 0.58) / 0.42) * 68)
     );
   }
-  const matched = effectiveDist <= 0.54 || cosine >= 0.84;
+  const matched = effectiveDist <= 0.58 || cosine >= 0.83;
 
   return {
     matched,
-    similarityPct: matched ? Math.max(76, similarityPct) : similarityPct,
+    similarityPct: matched ? Math.min(100, Math.max(76, similarityPct)) : Math.min(72, similarityPct),
     cosine,
     distance: effectiveDist,
   };
@@ -3577,54 +3605,81 @@ app.post("/api/auth/face-login", (req, res) => {
     });
   }
 
-  if (!rawLogin) {
-    return res.status(400).json({
-      error: "Face ID ga o'tish uchun avval Email yoki Username kiriting!",
-    });
-  }
-
-  const user = db.users.find(
-    (u) =>
-      u.email.toLowerCase() === rawLogin ||
-      u.username.toLowerCase() === rawLogin ||
-      u.email.toLowerCase().split("@")[0] === rawLogin ||
-      u.name.toLowerCase() === rawLogin
-  );
-
-  if (!user) {
-    return res.status(404).json({
-      error: "Ushbu Email yoki Username bilan foydalanuvchi topilmadi!",
-    });
-  }
-
-  const storedDescriptor: number[] = Array.isArray((user as any).faceDescriptor)
-    ? (user as any).faceDescriptor
-    : [];
-
+  let user: any = undefined;
+  let storedDescriptor: number[] = [];
   let similarityPct = 98;
-  if (storedDescriptor.length < 64) {
-    // First-time Face ID setup for this account: save on 1st scan and unlock!
-    (user as any).faceDescriptor = faceDescriptor;
-    user.faceIdEnabled = true;
-    if (faceIdDataUrl && faceIdDataUrl.startsWith("data:image")) {
-      user.faceIdDataUrl = faceIdDataUrl;
-    }
-  } else {
-    const comparison = compareFaceBiometricVectors(storedDescriptor, faceDescriptor);
-    similarityPct = comparison.similarityPct;
-    if (!comparison.matched) {
-      return res.status(403).json({
-        error: `❌ Yuz mos kelmadi! Kameradagi yuz @${user.username} hisobining saqlangan Face ID egasiga tegishli emas (O'xshashlik: ${comparison.similarityPct}%, kamida 75% bo'lishi shart).`,
-        similarityPct: comparison.similarityPct,
-        faceMismatch: true,
+
+  if (rawLogin) {
+    user = db.users.find(
+      (u) =>
+        u.email.toLowerCase() === rawLogin ||
+        u.username.toLowerCase() === rawLogin ||
+        u.email.toLowerCase().split("@")[0] === rawLogin ||
+        u.name.toLowerCase() === rawLogin
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        error: `"${rawLogin}" foydalanuvchisi topilmadi! Iltimos, to'g'ri username yoki email kiriting.`,
       });
     }
-    if (comparison.needsDescriptorUpgrade) {
+
+    storedDescriptor = Array.isArray((user as any).faceDescriptor)
+      ? (user as any).faceDescriptor
+      : [];
+
+    if (storedDescriptor.length < 64) {
+      // First-time Face ID setup for this account: save on 1st scan and unlock!
       (user as any).faceDescriptor = faceDescriptor;
       user.faceIdEnabled = true;
       if (faceIdDataUrl && faceIdDataUrl.startsWith("data:image")) {
         user.faceIdDataUrl = faceIdDataUrl;
       }
+    } else {
+      const comparison = compareFaceBiometricVectors(storedDescriptor, faceDescriptor);
+      similarityPct = comparison.similarityPct;
+      if (!comparison.matched) {
+        return res.status(403).json({
+          error: `❌ Yuz mos kelmadi! Kameradagi yuz @${user.username} hisobining saqlangan Face ID egasiga tegishli emas (O'xshashlik: ${comparison.similarityPct}%, kamida 75% bo'lishi shart).`,
+          similarityPct: comparison.similarityPct,
+          faceMismatch: true,
+        });
+      }
+      if (comparison.needsDescriptorUpgrade) {
+        (user as any).faceDescriptor = faceDescriptor;
+        user.faceIdEnabled = true;
+        if (faceIdDataUrl && faceIdDataUrl.startsWith("data:image")) {
+          user.faceIdDataUrl = faceIdDataUrl;
+        }
+      }
+    }
+  } else {
+    // AUTO-IDENTIFICATION BY FACE:
+    // Search across all users who have enrolled a Face ID descriptor
+    let bestUser: any = null;
+    let highestSim = 0;
+
+    for (const cand of db.users) {
+      const candDesc = Array.isArray((cand as any).faceDescriptor)
+        ? (cand as any).faceDescriptor
+        : [];
+      if (candDesc.length >= 64) {
+        const comparison = compareFaceBiometricVectors(candDesc, faceDescriptor);
+        if (comparison.matched && comparison.similarityPct > highestSim) {
+          highestSim = comparison.similarityPct;
+          bestUser = cand;
+        }
+      }
+    }
+
+    if (bestUser && highestSim >= 75) {
+      user = bestUser;
+      similarityPct = highestSim;
+    } else {
+      return res.status(404).json({
+        error: "Ushbu yuz bilan saqlangan Face ID topilmadi! Iltimos, o'z hisobingiz nomini (@username) kiriting va yuzingizni ulang.",
+        needLoginInput: true,
+      });
     }
   }
 

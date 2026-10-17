@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'motion/react';
 import confetti from 'canvas-confetti';
 import { User, Submission, TestItem } from '../types';
