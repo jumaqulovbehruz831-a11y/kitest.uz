@@ -586,7 +586,7 @@ export const RotatingPlainText: React.FC<RotatingPlainTextProps> = ({
     <span className={`inline-flex relative overflow-hidden align-bottom ${className}`}>
       <AnimatePresence mode="wait">
         <motion.span
-          key={phrases[index]}
+          key={`rot_phrase_${index}_${phrases[index] || ''}`}
           initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           exit={{ opacity: 0, y: -14, filter: 'blur(6px)' }}

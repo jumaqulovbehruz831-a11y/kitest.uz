@@ -1792,9 +1792,9 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
                 </div>
 
                 {/* Floating Damage Numbers */}
-                {damagePopups.map((dmg) => (
+                {damagePopups.map((dmg, idx) => (
                   <motion.div
-                    key={dmg.id}
+                    key={`dmg_pop_${dmg.id}_${idx}`}
                     initial={{ opacity: 1, y: 0, scale: 1 }}
                     animate={{ opacity: 0, y: -45, scale: 1.25 }}
                     transition={{ duration: 0.85 }}

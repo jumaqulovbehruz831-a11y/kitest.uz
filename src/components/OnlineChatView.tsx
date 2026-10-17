@@ -1417,7 +1417,7 @@ export const OnlineChatView: React.FC<OnlineChatViewProps> = ({
                               currentUser && reactors.includes(currentUser.id);
                             return (
                               <button
-                                key={emoji}
+                                key={`rx_${msg.id}_${emoji}`}
                                 type="button"
                                 onClick={() => handleToggleReaction(msg.id, emoji)}
                                 className={`px-1.5 py-0.5 rounded-md text-[11px] transition-colors flex items-center gap-1 ${

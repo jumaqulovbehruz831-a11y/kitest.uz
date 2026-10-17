@@ -477,8 +477,8 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   <option value="Barchasi" className="bg-slate-900">
                     Barcha hududlar
                   </option>
-                  {REGIONS_LIST.map((r) => (
-                    <option key={r} value={r} className="bg-slate-900">
+                  {REGIONS_LIST.filter((r) => r !== 'Barchasi').map((r, rIdx) => (
+                    <option key={`lb_reg_${r}_${rIdx}`} value={r} className="bg-slate-900">
                       {r}
                     </option>
                   ))}
@@ -533,7 +533,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                       </td>
                     </tr>
                   ) : (
-                    filteredUsers.map((user) => {
+                    filteredUsers.map((user, uIdx) => {
                       const rank = sortedUsers.findIndex((u) => u.id === user.id) + 1;
                       const isCurrentUser = currentUser?.id === user.id;
                       const isMainAdmin =
@@ -547,7 +547,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
                       return (
                         <tr
-                          key={user.id}
+                          key={`lb_user_${user.id}_${uIdx}`}
                           onClick={() => setInspectedUser(user)}
                           className={`cursor-pointer transition-colors ${
                             isCurrentUser
@@ -693,7 +693,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               <tbody className="divide-y divide-slate-800/70 text-sm">
                 {institutionStats.map((inst, idx) => (
                   <tr
-                    key={inst.institution}
+                    key={`lb_inst_${inst.institution || 'na'}_${idx}`}
                     className="hover:bg-slate-800/40 transition-colors"
                   >
                     <td className="py-3 px-4 font-mono font-bold text-xs text-slate-400">
@@ -754,7 +754,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               <tbody className="divide-y divide-slate-800/70 text-sm">
                 {regionalStats.map((reg, idx) => (
                   <tr
-                    key={reg.region}
+                    key={`lb_reg_${reg.region || 'na'}_${idx}`}
                     className="hover:bg-slate-800/40 transition-colors"
                   >
                     <td className="py-3 px-4 font-mono font-bold text-xs text-slate-400">
@@ -816,11 +816,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allPerfectSubmissions.map((sub) => {
+              {allPerfectSubmissions.map((sub, sIdx) => {
                 const owner = users.find((u) => u.id === sub.userId);
                 return (
                   <div
-                    key={sub.id}
+                    key={`lb_perf_sub_${sub.id}_${sIdx}`}
                     className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between gap-3"
                   >
                     <div className="space-y-2">

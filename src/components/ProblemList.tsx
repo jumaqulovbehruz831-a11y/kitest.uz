@@ -304,7 +304,7 @@ export const ProblemList: React.FC<ProblemListProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {filteredTests.map((t) => {
+            {filteredTests.map((t, tIdx) => {
               const isSolved = solvedTestIds.has(t.id);
               const diffPercent = getDifficultyPercent(t.difficulty);
               const firstQ = t.questions[0];
@@ -312,7 +312,7 @@ export const ProblemList: React.FC<ProblemListProps> = ({
 
               return (
                 <div
-                  key={t.id}
+                  key={`prob_test_${t.id}_${tIdx}`}
                   onClick={() => onSelectTest(t)}
                   className="rounded-2xl bg-slate-900 border-2 border-slate-800 hover:border-sky-500/70 shadow-xl hover:shadow-2xl hover:shadow-sky-500/10 transition-all flex flex-col justify-between overflow-hidden group cursor-pointer"
                 >

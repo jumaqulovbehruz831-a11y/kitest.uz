@@ -1100,8 +1100,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       onChange={(e) => handleRegionChange(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white"
                     >
-                      {REGIONS_LIST.map((r) => (
-                        <option key={r} value={r}>
+                      {REGIONS_LIST.map((r, rIdx) => (
+                        <option key={`prof_reg_${r}_${rIdx}`} value={r}>
                           {r}
                         </option>
                       ))}
@@ -1117,8 +1117,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       onChange={(e) => setDistrict(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white"
                     >
-                      {currentDistricts.map((d) => (
-                        <option key={d} value={d}>
+                      {currentDistricts.map((d, dIdx) => (
+                        <option key={`prof_dist_${d}_${dIdx}`} value={d}>
                           {d}
                         </option>
                       ))}

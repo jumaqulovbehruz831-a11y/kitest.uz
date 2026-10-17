@@ -256,9 +256,9 @@ export const InteractiveTutorialModal: React.FC<InteractiveTutorialModalProps> =
             </p>
 
             <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-              {onlineUsers.map((u) => (
+              {onlineUsers.map((u, uIdx) => (
                 <div
-                  key={u.userId}
+                  key={`tut_online_${u.userId || 'usr'}_${uIdx}`}
                   className="flex items-center justify-between gap-2 rounded-2xl bg-white/5 border border-white/10 p-2.5"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">

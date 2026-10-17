@@ -1591,11 +1591,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {/* Live Online Users Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {liveOnlineUsers.map((ou) => {
+            {liveOnlineUsers.map((ou, ouIdx) => {
               const matchedUser = users.find((u) => u.id === ou.userId);
               return (
                 <div
-                  key={ou.userId}
+                  key={`online_usr_${ou.userId || 'anon'}_${ouIdx}`}
                   className="rounded-2xl bg-slate-900/90 border border-emerald-500/30 p-4 space-y-3 shadow-lg"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -2939,9 +2939,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 Qo'shiladigan Ball miqdori (+Ball) *
               </label>
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {[25, 50, 100, 250, 500, 1000].map((amt) => (
+                {[25, 50, 100, 250, 500, 1000].map((amt, aIdx) => (
                   <button
-                    key={amt}
+                    key={`adm_amt_${amt}_${aIdx}`}
                     type="button"
                     onClick={() => setScoreDeltaAmount(amt)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition-all ${

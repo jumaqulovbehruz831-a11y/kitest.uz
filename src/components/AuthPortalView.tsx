@@ -793,9 +793,9 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
             {/* Quick Live Emotions in Header matching user request */}
             <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#111622] border border-white/10">
               <span className="text-[11px] text-amber-300 font-bold mr-1 hidden sm:inline">✨ Emotsiyalar:</span>
-              {emotions.slice(0, 5).map((emo) => (
+              {emotions.slice(0, 5).map((emo, eIdx) => (
                 <button
-                  key={emo.id}
+                  key={`hdr_emo_${emo.id}_${eIdx}`}
                   type="button"
                   onClick={() => handleTriggerEmotion(emo.id, emo.emoji, emo.label)}
                   className="hover:scale-130 active:scale-95 transition-transform text-sm cursor-pointer p-0.5"
@@ -1014,7 +1014,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
               <div className="flex items-center gap-2">
                 {STUDIO_SHOWCASE_SLIDES.map((s, idx) => (
                   <button
-                    key={s.id}
+                    key={`showcase_slide_${s.id}_${idx}`}
                     type="button"
                     onClick={() => setActiveSlide(idx)}
                     className={`h-1.5 rounded-full transition-all ${
@@ -1471,9 +1471,9 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                               className="w-full pl-8 pr-2 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
                             >
                               {REGIONS_LIST.filter((r) => r !== 'Barchasi').map(
-                                (r) => (
+                                (r, rIdx) => (
                                   <option
-                                    key={r}
+                                    key={`auth_reg_${r}_${rIdx}`}
                                     value={r}
                                     className="bg-slate-900"
                                   >
@@ -1494,9 +1494,9 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                             onChange={(e) => setDistrict(e.target.value)}
                             className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
                           >
-                            {availableDistricts.map((d) => (
+                            {availableDistricts.map((d, dIdx) => (
                               <option
-                                key={d}
+                                key={`auth_dist_${d}_${dIdx}`}
                                 value={d}
                                 className="bg-slate-900"
                               >
@@ -1748,9 +1748,9 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
       />
 
       {/* FLOATING JOYFUL EMOJI BURSTS */}
-      {floatingEmojis.map((f) => (
+      {floatingEmojis.map((f, fIdx) => (
         <motion.div
-          key={f.id}
+          key={`float_emo_${f.id}_${fIdx}`}
           initial={{ opacity: 1, y: 0, scale: 0.9 }}
           animate={{ opacity: 0, y: -200, scale: 1.6 }}
           transition={{ duration: 1.6, ease: 'easeOut' }}

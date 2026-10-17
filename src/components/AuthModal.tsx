@@ -497,8 +497,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         onChange={(e) => handleRegionChange(e.target.value)}
                         className="w-full pl-8 pr-6 py-2.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm text-slate-900 outline-none appearance-none cursor-pointer focus:border-blue-500"
                       >
-                        {REGIONS_LIST.map((r) => (
-                          <option key={r} value={r}>
+                        {REGIONS_LIST.map((r, rIdx) => (
+                          <option key={`auth_m_reg_${r}_${rIdx}`} value={r}>
                             {r}
                           </option>
                         ))}
@@ -517,8 +517,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         onChange={(e) => setDistrict(e.target.value)}
                         className="w-full pl-8 pr-6 py-2.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm text-slate-900 outline-none appearance-none cursor-pointer focus:border-blue-500"
                       >
-                        {(UZBEKISTAN_LOCATIONS[region] || []).map((d) => (
-                          <option key={d} value={d}>
+                        {(UZBEKISTAN_LOCATIONS[region] || []).map((d, dIdx) => (
+                          <option key={`auth_m_dist_${d}_${dIdx}`} value={d}>
                             {d}
                           </option>
                         ))}

@@ -155,7 +155,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   // Subject filters
   const subjectsList = useMemo(() => {
-    const list = Array.from(new Set(tests.map((t) => t.subject))).filter(Boolean);
+    const list = Array.from(new Set(tests.map((t) => t.subject))).filter(
+      (s) => Boolean(s) && s !== 'Barchasi'
+    );
     return ['Barchasi', ...list];
   }, [tests]);
 

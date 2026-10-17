@@ -758,9 +758,9 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
             {/* Remote Participants Tiles */}
             {participants
               .filter((p) => p.userId !== user.id)
-              .map((participant) => (
+              .map((participant, pIdx) => (
                 <div
-                  key={participant.userId}
+                  key={`majlis_part_${participant.userId}_${pIdx}`}
                   className={`relative overflow-hidden rounded-3xl border bg-slate-950 aspect-video shadow-xl transition-all ${
                     participant.speaking
                       ? 'border-emerald-400 ring-2 ring-emerald-500/40'
@@ -872,9 +872,9 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-900/80 p-4">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-400 mr-1">Jonli Emotsiyalar:</span>
-              {QUICK_REACTIONS.map((emoji) => (
+              {QUICK_REACTIONS.map((emoji, rxIdx) => (
                 <button
-                  key={emoji}
+                  key={`majlis_emo_${emoji}_${rxIdx}`}
                   onClick={() => handleTriggerReaction(emoji)}
                   className="h-9 w-9 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-lg flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
                 >
@@ -916,11 +916,11 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
             </div>
 
             <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-              {allOnline.map((u) => {
+              {allOnline.map((u, oIdx) => {
                 const inRoom = participants.some((p) => p.userId === u.userId);
                 return (
                   <div
-                    key={u.userId}
+                    key={`majlis_online_${u.userId || 'anon'}_${oIdx}`}
                     className="flex items-center justify-between gap-2 rounded-2xl bg-white/5 border border-white/10 px-3.5 py-2.5"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">

@@ -1100,8 +1100,8 @@ export const BackgroundCustomizerModal: React.FC<BackgroundCustomizerModalProps>
                             }}
                             className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-400"
                           >
-                            {REGIONS_LIST.filter((r) => r !== 'Barchasi').map((r) => (
-                              <option key={r} value={r}>
+                            {REGIONS_LIST.filter((r) => r !== 'Barchasi').map((r, rIdx) => (
+                              <option key={`bg_reg_${r}_${rIdx}`} value={r}>
                                 {r}
                               </option>
                             ))}
@@ -1118,8 +1118,8 @@ export const BackgroundCustomizerModal: React.FC<BackgroundCustomizerModalProps>
                           onChange={(e) => setEditDistrict(e.target.value)}
                           className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-400"
                         >
-                          {districtsForSelectedRegion.map((d) => (
-                            <option key={d} value={d}>
+                          {districtsForSelectedRegion.map((d, dIdx) => (
+                            <option key={`bg_dist_${d}_${dIdx}`} value={d}>
                               {d}
                             </option>
                           ))}

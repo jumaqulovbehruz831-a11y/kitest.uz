@@ -31,7 +31,13 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({
 
   const subjects = [
     'Barchasi',
-    ...Array.from(new Set(submissions.map((s) => s.subject))),
+    ...Array.from(
+      new Set(
+        submissions
+          .map((s) => s.subject)
+          .filter((s) => Boolean(s) && s !== 'Barchasi')
+      )
+    ),
   ];
 
   const isPerfectSubmission = (sub: Submission) =>
@@ -173,8 +179,12 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({
               onChange={(e) => setSubjectFilter(e.target.value)}
               className="bg-transparent text-xs text-slate-200 focus:outline-none"
             >
-              {subjects.map((subj) => (
-                <option key={subj} value={subj} className="bg-slate-900 text-white">
+              {subjects.map((subj, sIdx) => (
+                <option
+                  key={`sub_filter_${subj}_${sIdx}`}
+                  value={subj}
+                  className="bg-slate-900 text-white"
+                >
                   {subj}
                 </option>
               ))}
@@ -206,14 +216,14 @@ export const SubmissionsView: React.FC<SubmissionsViewProps> = ({
                   </td>
                 </tr>
               ) : (
-                filtered.map((sub) => {
+                filtered.map((sub, sIdx) => {
                   const isPerfect = isPerfectSubmission(sub);
                   const isGood = sub.percentage >= 70;
                   const wrongAndBlank = sub.wrongCount + sub.unansweredCount;
 
                   return (
                     <tr
-                      key={sub.id}
+                      key={`sub_row_${sub.id}_${sIdx}`}
                       className={`hover:bg-slate-800/40 transition-colors ${
                         isPerfect ? 'bg-amber-950/10' : ''
                       }`}
