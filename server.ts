@@ -1673,6 +1673,62 @@ app.post("/api/majlis/host-action", (req, res) => {
   res.json({ success: true, majlisState: serialized, room: serialized });
 });
 
+// Majlis session save / record endpoint
+const majlisSavedRecordings: Array<{
+  id: string;
+  title: string;
+  topic: string;
+  hostName: string;
+  savedAt: string;
+  durationMinutes: number;
+  participantsCount: number;
+  participantsSummary: string[];
+  notes?: string;
+}> = [
+  {
+    id: "rec_chsb_masterclass",
+    title: "CHSB Matematika & Algoritmlar Jonli Video Tahlili",
+    topic: "Eng qiyin olimpiada masalalari yechimlari va video muhokamasi",
+    hostName: "Behruz Jumaqulov (Bosh Admin)",
+    savedAt: new Date(Date.now() - 3600_000 * 24).toISOString(),
+    durationMinutes: 45,
+    participantsCount: 8,
+    participantsSummary: ["Behruz Jumaqulov", "Sardorbek", "Ziyoda IT", "Olimpiada Ustoz"],
+    notes: "Majlisda barcha ishtirokchilar kameralarini yoqib qatnashdi va savollarga javob berildi.",
+  },
+];
+
+app.get("/api/majlis/recordings", (_req, res) => {
+  res.json({ success: true, recordings: majlisSavedRecordings });
+});
+
+app.post("/api/majlis/save-recording", (req, res) => {
+  const { title, topic, hostName, notes, durationMinutes } = req.body || {};
+  const currentParticipants = Array.from(majlisState.participants.values()).map(
+    (p) => p.name || p.username
+  );
+
+  const newRec = {
+    id: `rec_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    title: String(title || majlisState.title || "Video Majlis Yozuvi").trim(),
+    topic: String(topic || majlisState.topic || "Jonli Muloqot").trim(),
+    hostName: String(hostName || majlisState.hostName || "Bosh Admin").trim(),
+    savedAt: new Date().toISOString(),
+    durationMinutes: Math.max(1, Number(durationMinutes) || 15),
+    participantsCount: Math.max(1, currentParticipants.length),
+    participantsSummary: currentParticipants.length > 0 ? currentParticipants : ["Bosh Admin", "Ishtirokchilar"],
+    notes: notes ? String(notes).trim() : "Majlis muvaffaqiyatli o'tdi va saqlandi.",
+  };
+
+  majlisSavedRecordings.unshift(newRec);
+  res.json({
+    success: true,
+    recording: newRec,
+    recordings: majlisSavedRecordings,
+    message: "🎥 Video Majlis yozuvi va natijalari muvaffaqiyatli saqlandi!",
+  });
+});
+
 // ==========================================
 // GAMEBALL (KITESHOT 3D & IQ MULTIPLAYER)
 // ==========================================
@@ -1866,6 +1922,50 @@ app.post("/api/gameball/hit", (req, res) => {
     totalAward,
     multiplier: mult,
     newTotalScore: shooterUser.totalScore,
+  });
+});
+
+// Match finish scoring endpoint:
+// STRICT USER RULE: "Agar birinchi oʻrin egallansa — 3 ta ball, keyingi oʻrinlarga esa 1 tadan ball beriladigan qilinsin."
+app.post("/api/gameball/match-finish", (req, res) => {
+  const { userId, rank = 1, score = 0, kills = 0 } = req.body || {};
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  const user = db.users.find((u) => u.id === String(userId));
+  if (!user) return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
+
+  const numericRank = Math.max(1, Number(rank) || 1);
+  const isFirstPlace = numericRank === 1;
+
+  // Award points based on exact rule:
+  // 1-o'rin -> 3 ta ball
+  // Keyingi o'rinlar -> 1 tadan ball
+  const awardedBall = isFirstPlace ? 3 : 1;
+  const awardedCoins = isFirstPlace ? 2 : 1;
+
+  user.totalScore = (user.totalScore || 0) + awardedBall;
+  user.coins = (user.coins || 0) + awardedCoins;
+  if (isFirstPlace) {
+    user.stars = (user.stars || 0) + 1;
+  }
+
+  recalculateRanksAndRoles();
+  saveDb();
+
+  const allSanitized = db.users.map(sanitizeUser);
+  broadcastWs({ type: "users:updated", users: allSanitized });
+
+  res.json({
+    success: true,
+    rank: numericRank,
+    isFirstPlace,
+    awardedBall,
+    awardedCoins,
+    user: sanitizeUser(user),
+    users: allSanitized,
+    message: isFirstPlace
+      ? `🏆 Tabriklaymiz! 1-o'rinni egalladingiz: +${awardedBall} Ball, +${awardedCoins} Coins va +1 Yulduz taqdim etildi!`
+      : `🎯 O'yin muvaffaqiyatli yakunlandi (${numericRank}-o'rin): +${awardedBall} Ball va +${awardedCoins} Coin qo'shildi!`,
   });
 });
 
@@ -2483,6 +2583,142 @@ Vazifa:
     res.json({
       success: true,
       question: { ...fallback, imageUrl: imageData },
+    });
+  }
+});
+
+// 2.6 Advanced Multimodal AI Question Generator:
+// STRICT USER RULE: "AI'ga rasm, jest yoki kanal havolasi tashlab berilsa, u oʻzi savol qilib berishi kerak."
+app.post("/api/ai/generate-multimodal", async (req, res) => {
+  const {
+    imageData,
+    gestureText,
+    channelLink,
+    subject = "Umumiy fanlar",
+    difficulty = "O'rta",
+    count = 2,
+    defaultPoints = 1,
+  } = req.body || {};
+
+  const cleanSubject = String(subject).trim();
+  const cleanDifficulty = String(difficulty).trim();
+  const numQuestions = Math.min(6, Math.max(1, Number(count) || 2));
+  const pts = Math.max(1, Number(defaultPoints) || 1);
+
+  const ai = getGeminiClient();
+
+  const promptDetails = [
+    `Fan: "${cleanSubject}"`,
+    `Qiyinchilik darajasi: "${cleanDifficulty}"`,
+    gestureText ? `Jest yoki amaliy harakat: "${String(gestureText).trim()}"` : "",
+    channelLink ? `Kanal yoki post havolasi / matni: "${String(channelLink).trim()}"` : "",
+  ].filter(Boolean).join("\n");
+
+  const fullPrompt = `Sen O'zbekistondagi eng ilg'or KITEST ta'lim platformasining Sun'iy Intellekt Ustozisan.
+Quyidagi ma'lumotlar, jest/harakat, kanal havolasi yoki rasm asosida ${numQuestions} ta juda sifatli, tushunarli va qiziqarli ko'p tanlovli (A, B, C, D) test savoli tuzib ber:
+
+${promptDetails}
+
+TALABLAR:
+1. Har bir savolda aniq savol matni ("text") bo'lsin. Agar jest yoki rasm bo'lsa, undagi qoida (masalan, Fizikada o'ng qo'l qoidasi, matematikada burchaklar yoki dasturlashda algoritm) savolga singdirilsin.
+2. 4 ta javob varianti ro'yxati ("options").
+3. To'g'ri javob indeksi ("correctOptionIndex": 0, 1, 2 yoki 3).
+4. Batafsil ilmiy va tushunarli yechim ("explanation").
+5. O'zbek tilida, imlo xatolarisiz yoz.`;
+
+  if (!ai) {
+    const fallbackList = buildSmartTopicQuestions(
+      cleanSubject,
+      gestureText || channelLink || "Jest va Amaliy Mashq",
+      cleanDifficulty,
+      numQuestions,
+      pts
+    );
+    return res.json({
+      success: true,
+      questions: fallbackList,
+      source: "local_intelligent_engine",
+    });
+  }
+
+  try {
+    const contents: any[] = [];
+    if (imageData && typeof imageData === "string" && imageData.startsWith("data:image")) {
+      const match = imageData.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        contents.push({
+          inlineData: {
+            mimeType: match[1],
+            data: match[2],
+          },
+        });
+      }
+    }
+    contents.push(fullPrompt);
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              text: { type: Type.STRING, description: "Savol matni" },
+              codeSnippet: { type: Type.STRING, description: "Formula yoki kod bo'lsa" },
+              options: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "4 ta variant",
+              },
+              correctOptionIndex: { type: Type.INTEGER, description: "To'g'ri javob indeksi (0..3)" },
+              explanation: { type: Type.STRING, description: "Batafsil tushuntirish va yechim" },
+            },
+            required: ["text", "options", "correctOptionIndex", "explanation"],
+          },
+        },
+      },
+    });
+
+    const parsed = JSON.parse(response.text || "[]");
+    const resultList: QuizQuestion[] = (Array.isArray(parsed) ? parsed : [parsed])
+      .map((item: any, idx: number) => {
+        const cleanOpts = Array.isArray(item.options) && item.options.length >= 2
+          ? item.options.slice(0, 4).map((o: any) => String(o).replace(/^[A-Da-d][\.\)]\s*/, "").trim())
+          : ["A variant", "B variant", "C variant", "D variant"];
+        const rightIdx = Number(item.correctOptionIndex);
+        return {
+          id: `q_ai_mm_${Date.now()}_${idx + 1}`,
+          text: String(item.text || `${cleanSubject} savoli`).trim(),
+          codeSnippet: item.codeSnippet ? String(item.codeSnippet).trim() : undefined,
+          imageUrl: imageData && typeof imageData === "string" ? imageData : undefined,
+          options: cleanOpts,
+          correctOptionIndex: !isNaN(rightIdx) && rightIdx >= 0 && rightIdx < cleanOpts.length ? rightIdx : 0,
+          explanation: String(item.explanation || "Ilmiy izoh").trim(),
+          points: pts,
+        };
+      });
+
+    res.json({
+      success: true,
+      questions: resultList.length > 0 ? resultList : buildSmartTopicQuestions(cleanSubject, "Jest va Havola", cleanDifficulty, numQuestions, pts),
+      source: "gemini_multimodal",
+    });
+  } catch (err: any) {
+    console.error("Multimodal AI question generation error:", err);
+    const fallbackList = buildSmartTopicQuestions(
+      cleanSubject,
+      gestureText || channelLink || "Amaliy test",
+      cleanDifficulty,
+      numQuestions,
+      pts
+    );
+    res.json({
+      success: true,
+      questions: fallbackList,
+      source: "fallback_engine",
     });
   }
 });
@@ -3309,20 +3545,23 @@ function compareFaceBiometricVectors(
   const effectiveDist = Math.min(distance, normDist);
 
   // In biometric 128-D metric space:
-  // Same person has effectiveDist <= 0.58 or cosine >= 0.83 (mapped to 75%..100%)
+  // Same person has effectiveDist <= 0.72 or cosine >= 0.72 (mapped to 78%..100%)
   let similarityPct: number;
-  if (effectiveDist <= 0.58 || cosine >= 0.83) {
-    similarityPct = Math.round(76 + ((0.58 - effectiveDist) / 0.58) * 24);
+  if (effectiveDist <= 0.72 || cosine >= 0.72) {
+    const scoreA = cosine >= 0.72 ? (cosine - 0.72) / 0.28 : 0;
+    const scoreB = effectiveDist <= 0.72 ? (0.72 - effectiveDist) / 0.72 : 0;
+    const bestScore = Math.max(scoreA, scoreB);
+    similarityPct = Math.round(78 + bestScore * 22);
   } else {
     similarityPct = Math.round(
-      Math.max(0, 68 - ((effectiveDist - 0.58) / 0.42) * 68)
+      Math.max(0, 70 - ((effectiveDist - 0.72) / 0.45) * 70)
     );
   }
-  const matched = effectiveDist <= 0.58 || cosine >= 0.83;
+  const matched = effectiveDist <= 0.72 || cosine >= 0.72;
 
   return {
     matched,
-    similarityPct: matched ? Math.min(100, Math.max(76, similarityPct)) : Math.min(72, similarityPct),
+    similarityPct: matched ? Math.min(100, Math.max(78, similarityPct)) : Math.min(68, similarityPct),
     cosine,
     distance: effectiveDist,
   };

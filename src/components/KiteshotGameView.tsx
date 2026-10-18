@@ -137,6 +137,15 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(!soundEnabled);
+  const [matchResult, setMatchResult] = useState<{
+    isOpen: boolean;
+    rank: number;
+    isWinner: boolean;
+    awardedBall: number;
+    awardedCoins: number;
+    score: number;
+    kills: number;
+  } | null>(null);
 
   // Weapon & Combat State
   const [currentWeapon, setCurrentWeapon] = useState<WeaponType>('railgun');
@@ -1575,6 +1584,82 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
     return () => document.removeEventListener('pointerlockchange', handleLockChange);
   }, []);
 
+  // Match finish function implementing user requirement:
+  // "Agar birinchi oʻrin egallansa — 3 ta ball, keyingi oʻrinlarga esa 1 tadan ball beriladigan qilinsin."
+  const handleFinishMatch = async (forceRank?: number) => {
+    if (!currentUser) return;
+    setInGame(false);
+    if (document.exitPointerLock) {
+      try {
+        document.exitPointerLock();
+      } catch {}
+    }
+
+    const calculatedRank = forceRank !== undefined ? forceRank : (localScore >= 80 || killsCount >= 3 ? 1 : 2);
+    const isFirst = calculatedRank === 1;
+    const pts = isFirst ? 3 : 1;
+    const coins = isFirst ? 2 : 1;
+
+    try {
+      const res = await fetch('/api/gameball/match-finish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          rank: calculatedRank,
+          score: localScore,
+          kills: killsCount,
+        }),
+      });
+      const data = await res.json();
+      if (data.user) {
+        onUpdateUser(data.user);
+      }
+    } catch {
+      // Optimistic local update
+      onUpdateUser({
+        ...currentUser,
+        totalScore: (currentUser.totalScore || 0) + pts,
+        coins: (currentUser.coins || 0) + coins,
+      });
+    }
+
+    if (isFirst) {
+      playKitestSound('fanfare', soundEnabled);
+      try {
+        confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } });
+      } catch {}
+    } else {
+      playKitestSound('success', soundEnabled);
+    }
+
+    setMatchResult({
+      isOpen: true,
+      rank: calculatedRank,
+      isWinner: isFirst,
+      awardedBall: pts,
+      awardedCoins: coins,
+      score: localScore,
+      kills: killsCount,
+    });
+  };
+
+  // Match countdown effect
+  useEffect(() => {
+    if (!inGame) return;
+    const timer = setInterval(() => {
+      setSessionTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleFinishMatch();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [inGame]);
+
   return (
     <div className="space-y-6">
       {/* Mode Switcher Tabs */}
@@ -1742,12 +1827,23 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
 
                   {/* Right: Timer & Kill Feed */}
                   <div className="flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-2 bg-slate-950/70 backdrop-blur-md p-2 px-4 rounded-2xl border border-slate-800 font-mono font-bold text-sm text-sky-300">
-                      <Timer className="w-4 h-4 text-sky-400 animate-spin" />
-                      <span>
-                        {String(Math.floor(sessionTimeLeft / 60)).padStart(2, '0')}:
-                        {String(sessionTimeLeft % 60).padStart(2, '0')}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 bg-slate-950/70 backdrop-blur-md p-2 px-4 rounded-2xl border border-slate-800 font-mono font-bold text-sm text-sky-300">
+                        <Timer className="w-4 h-4 text-sky-400 animate-spin" />
+                        <span>
+                          {String(Math.floor(sessionTimeLeft / 60)).padStart(2, '0')}:
+                          {String(sessionTimeLeft % 60).padStart(2, '0')}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleFinishMatch()}
+                        className="py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs pointer-events-auto cursor-pointer shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                        title="O'yinni tugatish va ballarni hisobga olish"
+                      >
+                        <Trophy className="w-3.5 h-3.5" />
+                        <span>Tugatish</span>
+                      </button>
                     </div>
 
                     {/* Kill Feed */}
@@ -1932,6 +2028,79 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* MATCH FINISH MODAL (User rule: 1-o'rin -> 3 ball, keyingi o'rinlar -> 1 ball) */}
+      <AnimatePresence>
+        {matchResult?.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0, y: 20 }}
+              className="w-full max-w-md rounded-3xl bg-slate-900 border-2 border-amber-500/60 p-6 sm:p-7 shadow-[0_0_60px_rgba(245,158,11,0.35)] text-center space-y-4"
+            >
+              <div className="w-16 h-16 rounded-2xl mx-auto bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-3xl shadow-inner">
+                {matchResult.isWinner ? '🏆' : '🎯'}
+              </div>
+
+              <div>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30">
+                  {matchResult.isWinner ? "1-O'RIN G'OLIBI" : `${matchResult.rank}-O'RIN SOVRINDORI`}
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-white mt-2">
+                  {matchResult.isWinner ? "G'alaba! Siz 1-o'rinni egalladingiz!" : "O'yin Muvaffaqiyatli Yakunlandi!"}
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  Kiteshot 3D jang maydonida ko'rsatgan mahoratingiz uchun ballar hisobingizga qo'shildi.
+                </p>
+              </div>
+
+              {/* Award Badges Grid */}
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center">
+                  <div className="text-[10px] text-slate-400 uppercase font-mono">Qo'shilgan Ball</div>
+                  <div className="text-2xl font-black text-sky-400 mt-0.5">+{matchResult.awardedBall} Ball</div>
+                  <div className="text-[10px] text-slate-400 font-bold">
+                    {matchResult.isWinner ? '🏆 1-o\'rin bonusi' : '🎯 Ishtirok bonusi'}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+                  <div className="text-[10px] text-slate-400 uppercase font-mono">Oltin Tangalar</div>
+                  <div className="text-2xl font-black text-amber-400 mt-0.5">+{matchResult.awardedCoins} Coins</div>
+                  <div className="text-[10px] text-slate-400 font-bold">Do'kon & Baraban</div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-slate-400 font-mono px-2">
+                <span>Ochko: <strong className="text-white">{matchResult.score}</strong></span>
+                <span>Kills: <strong className="text-emerald-400">{matchResult.kills}</strong></span>
+                <span>O'rningiz: <strong className="text-amber-400">#{matchResult.rank}</strong></span>
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setMatchResult(null)}
+                  className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Yopish
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMatchResult(null);
+                    handleStartGame();
+                  }}
+                  className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
+                >
+                  Qaytadan O'ynash
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

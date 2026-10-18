@@ -24,6 +24,13 @@ import {
   Flame,
   Star,
   CheckCircle2,
+  Megaphone,
+  Bell,
+  Calendar,
+  Pin,
+  Play,
+  Edit3,
+  ExternalLink,
 } from 'lucide-react';
 
 interface HomeViewProps {
