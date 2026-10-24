@@ -717,7 +717,8 @@ export interface ChatMessage {
     senderName: string;
     text: string;
   };
-  recipientId: string;
+  senderAvatarEmoji?: string;
+  recipientId?: string;
   text: string;
   sharedTestId?: string;
   sharedTestTitle?: string;

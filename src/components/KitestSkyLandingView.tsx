@@ -5,7 +5,7 @@ import {
   Kitest3DKiteIllustration,
   KitestSkyBackground,
 } from './KitestKiteLogo';
-import { User, TestItem } from '../types';
+import { User, TestItem, ADMIN_EMAIL } from '../types';
 import { NavTab } from './Navbar';
 import {
   BookOpen,
@@ -22,10 +22,15 @@ import {
   ScanFace,
   Gift,
   CheckCircle2,
+  Play,
+  Edit3,
+  X,
+  ExternalLink,
 } from 'lucide-react';
 
 interface KitestSkyLandingViewProps {
   currentUser: User | null;
+  isAdminUnlocked?: boolean;
   tests: TestItem[];
   users: User[];
   onOpenAuth: (mode: 'login' | 'register') => void;
@@ -37,6 +42,7 @@ interface KitestSkyLandingViewProps {
 
 export const KitestSkyLandingView: React.FC<KitestSkyLandingViewProps> = ({
   currentUser,
+  isAdminUnlocked,
   tests,
   users,
   onOpenAuth,
@@ -45,6 +51,61 @@ export const KitestSkyLandingView: React.FC<KitestSkyLandingViewProps> = ({
   onSelectTest,
   onNavigateTab,
 }) => {
+  const [entranceVideoUrl, setEntranceVideoUrl] = React.useState<string>(() => {
+    try {
+      return (
+        localStorage.getItem('kitest_entrance_video_url') ||
+        'https://www.youtube.com/embed/dQw4w9WgXcQ'
+      );
+    } catch {
+      return 'https://www.youtube.com/embed/dQw4w9WgXcQ';
+    }
+  });
+  const [isEditingVideo, setIsEditingVideo] = React.useState(false);
+  const [videoInput, setVideoInput] = React.useState('');
+  const [activeHeroTab, setActiveHeroTab] = React.useState<'video' | 'photo'>(
+    'video'
+  );
+
+  React.useEffect(() => {
+    fetch('/api/announcements')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.entranceVideoUrl) {
+          setEntranceVideoUrl(data.entranceVideoUrl);
+          try {
+            localStorage.setItem('kitest_entrance_video_url', data.entranceVideoUrl);
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const isUserAdmin = Boolean(
+    isAdminUnlocked ||
+      currentUser?.role === 'admin' ||
+      currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ||
+      currentUser?.username === 'behruz_admin'
+  );
+
+  const handleSaveVideoUrl = async () => {
+    let clean = videoInput.trim();
+    if (!clean) return;
+    if (clean.includes('watch?v=')) {
+      clean = clean.replace('watch?v=', 'embed/');
+    }
+    setEntranceVideoUrl(clean);
+    try {
+      localStorage.setItem('kitest_entrance_video_url', clean);
+      await fetch('/api/admin/entrance-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl: clean }),
+      });
+    } catch {}
+    setIsEditingVideo(false);
+    setVideoInput('');
+  };
   return (
     <KitestSkyBackground showKites={true} className="min-h-screen flex flex-col font-sans">
       {/* ========================================================================= */}
@@ -177,19 +238,108 @@ export const KitestSkyLandingView: React.FC<KitestSkyLandingViewProps> = ({
             </div>
           </div>
 
-          {/* Right Hero Image Column (100% Matching Image 1: 5 Students celebrating with kites) */}
-          <div className="lg:col-span-6 relative flex items-center justify-center">
+          {/* Right Hero Column: Entrance Video / Photo Showcase */}
+          <div className="lg:col-span-6 relative flex flex-col items-center justify-center">
             {/* Ambient Sky Cloud Backdrops */}
             <div className="absolute -top-10 -right-10 w-96 h-96 rounded-full bg-blue-300/30 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-10 -left-10 w-96 h-96 rounded-full bg-sky-200/40 blur-3xl pointer-events-none" />
 
-            <div className="relative z-10 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border-4 border-white/80 bg-white">
-              <img
-                src="/src/assets/images/kitest_hero_students_1791123717659.jpg"
-                alt="KITEST Kelajagingizni quring"
-                className="w-full h-auto object-cover object-center"
-              />
+            {/* Showcase Header Controls */}
+            <div className="relative z-20 w-full max-w-lg flex items-center justify-between pb-2 px-1">
+              <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-md p-1 rounded-2xl border border-sky-200 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setActiveHeroTab('video')}
+                  className={`py-1 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeHeroTab === 'video'
+                      ? 'bg-[#155dfc] text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>🎬 Kirish Videosi</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveHeroTab('photo')}
+                  className={`py-1 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeHeroTab === 'photo'
+                      ? 'bg-[#155dfc] text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>📸 Fotolavha</span>
+                </button>
+              </div>
+
+              {isUserAdmin && activeHeroTab === 'video' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVideoInput(entranceVideoUrl);
+                    setIsEditingVideo(true);
+                  }}
+                  className="py-1 px-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                  title="Admin uchun videoni o'zgartirish"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Videoni O'zgartirish</span>
+                </button>
+              )}
             </div>
+
+            {/* Display Media */}
+            <div className="relative z-10 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border-4 border-white/90 bg-slate-950 aspect-video">
+              {activeHeroTab === 'video' ? (
+                <iframe
+                  src={entranceVideoUrl}
+                  title="KITEST Rasmiy Kirish Videosi"
+                  className="w-full h-full object-cover"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <img
+                  src="/src/assets/images/kitest_hero_students_1791123717659.jpg"
+                  alt="KITEST Kelajagingizni quring"
+                  className="w-full h-full object-cover object-center"
+                />
+              )}
+            </div>
+
+            {/* Admin Video URL Editor Modal */}
+            {isEditingVideo && (
+              <div className="relative z-20 w-full max-w-lg mt-3 p-4 rounded-2xl bg-white/95 backdrop-blur-md border-2 border-amber-400 shadow-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                    <span>👑 Admin: Kirish Videosi Havolasi</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingVideo(false)}
+                    className="text-slate-400 hover:text-slate-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={videoInput}
+                    onChange={(e) => setVideoInput(e.target.value)}
+                    placeholder="https://www.youtube.com/embed/... yoki MP4 URL"
+                    className="flex-1 rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveVideoUrl}
+                    className="py-1.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer shadow-sm"
+                  >
+                    Saqlash
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

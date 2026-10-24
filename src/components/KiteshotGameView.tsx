@@ -157,6 +157,10 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
   const [isReloading, setIsReloading] = useState(false);
   const [playerHealth, setPlayerHealth] = useState(100);
   const [playerShield, setPlayerShield] = useState(50);
+  const [damageFlash, setDamageFlash] = useState(false);
+  const [isRespawning, setIsRespawning] = useState(false);
+  const [respawnTimer, setRespawnTimer] = useState(3);
+  const [isInvulnerable, setIsInvulnerable] = useState(false);
   const [hitmarkerVisible, setHitmarkerVisible] = useState(false);
   const [isCriticalHit, setIsCriticalHit] = useState(false);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
@@ -196,8 +200,25 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
     >
   >(new Map());
 
+  const botAiDataRef = useRef<
+    Map<
+      string,
+      {
+        lastShootTime: number;
+        shootIntervalMs: number;
+        strafeTimer: number;
+        strafeDirection: number;
+        vx: number;
+        vz: number;
+      }
+    >
+  >(new Map());
+
   const activeLasersRef = useRef<
     { mesh: THREE.Mesh; dir: THREE.Vector3; life: number; maxLife: number }[]
+  >([]);
+  const activeEnemyLasersRef = useRef<
+    { mesh: THREE.Mesh; velocity: THREE.Vector3; life: number; shooterName: string }[]
   >([]);
   const activeRocketsRef = useRef<
     { mesh: THREE.Mesh; velocity: THREE.Vector3; life: number; shooterId: string }[]
@@ -222,6 +243,7 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
     walkCycle: 0,
     canDoubleJump: true,
     canWallBounce: true,
+    invulnerableUntil: 0,
   });
 
   const keysDownRef = useRef<Record<string, boolean>>({});
@@ -353,6 +375,46 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
     } catch {}
   }, [getAudioContext, isMuted]);
 
+  const playPlayerHurtSound = useCallback(() => {
+    if (isMuted) return;
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.18);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } catch {}
+  }, [getAudioContext, isMuted]);
+
+  const playRespawnSound = useCallback(() => {
+    if (isMuted) return;
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.35);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } catch {}
+  }, [getAudioContext, isMuted]);
+
   const playDashWhoosh = useCallback(() => {
     if (isMuted) return;
     try {
@@ -412,6 +474,101 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
       osc.stop(now + 0.28);
     } catch {}
   }, [getAudioContext, isMuted]);
+
+  // =========================================================================
+  // PLAYER DAMAGE, DEATH & RESPAWN SYSTEM ("O'lsang yana paydo bo'lsin")
+  // =========================================================================
+  const triggerPlayerRespawn = useCallback(
+    (killedByName: string) => {
+      playRobloxOofSound();
+      setIsRespawning(true);
+      setRespawnTimer(3);
+      setKillFeed((kf) => [`[${killedByName}] sizni mag'lub etdi!`, ...kf.slice(0, 4)]);
+
+      let timeLeft = 3;
+      const respawnInterval = setInterval(() => {
+        timeLeft -= 1;
+        setRespawnTimer(timeLeft);
+        if (timeLeft <= 0) {
+          clearInterval(respawnInterval);
+
+          // Random safe spawn pad in arena
+          const safeSpawns = [
+            { x: 0, z: -18 },
+            { x: -16, z: 4 },
+            { x: 16, z: 4 },
+            { x: 0, z: 28 },
+          ];
+          const chosen = safeSpawns[Math.floor(Math.random() * safeSpawns.length)];
+          const p = playerPhysicsRef.current;
+          p.position.set(chosen.x, 1.8, chosen.z);
+          p.velocity.set(0, 0, 0);
+          p.invulnerableUntil = Date.now() + 2600;
+
+          setPlayerHealth(100);
+          setPlayerShield(50);
+          setAmmo({
+            railgun: WEAPONS.railgun.magSize,
+            shotgun: WEAPONS.shotgun.magSize,
+            rocket: WEAPONS.rocket.magSize,
+          });
+
+          setIsRespawning(false);
+          setIsInvulnerable(true);
+          playRespawnSound();
+
+          setTimeout(() => {
+            setIsInvulnerable(false);
+          }, 2600);
+        }
+      }, 1000);
+    },
+    [playRobloxOofSound, playRespawnSound]
+  );
+
+  const handlePlayerHitByOpponent = useCallback(
+    (damageAmount: number, shooterName: string) => {
+      const p = playerPhysicsRef.current;
+      const now = Date.now();
+      if (now < p.invulnerableUntil || isRespawning) return;
+
+      playPlayerHurtSound();
+      setDamageFlash(true);
+      setTimeout(() => setDamageFlash(false), 240);
+
+      setPlayerShield((prevShield) => {
+        let leftover = damageAmount;
+        let nextShield = prevShield;
+        if (prevShield > 0) {
+          if (prevShield >= damageAmount) {
+            nextShield = prevShield - damageAmount;
+            leftover = 0;
+          } else {
+            leftover = damageAmount - prevShield;
+            nextShield = 0;
+          }
+        }
+
+        if (leftover > 0) {
+          setPlayerHealth((prevHp) => {
+            const nextHp = prevHp - leftover;
+            if (nextHp <= 0) {
+              triggerPlayerRespawn(shooterName);
+              return 0;
+            }
+            return nextHp;
+          });
+        }
+        return nextShield;
+      });
+    },
+    [isRespawning, playPlayerHurtSound, triggerPlayerRespawn]
+  );
+
+  const playerHitRef = useRef(handlePlayerHitByOpponent);
+  useEffect(() => {
+    playerHitRef.current = handlePlayerHitByOpponent;
+  }, [handlePlayerHitByOpponent]);
 
   // =========================================================================
   // ARENA LAYOUT DEFINITIONS (Cyber Neon Pillars, Pads, Catwalks)
@@ -479,7 +636,9 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.25;
 
-    container.innerHTML = '';
+    if (container.contains(renderer.domElement)) {
+      container.removeChild(renderer.domElement);
+    }
     container.appendChild(renderer.domElement);
 
     // 4. Lights
@@ -936,15 +1095,117 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
       }
 
       // -------------------------------------------------------------
-      // (D) Animate Roblox Bots (Walking, Aiming, Jumping)
+      // (D) Update Enemy Lasers & Hit Player
+      // -------------------------------------------------------------
+      const isInvul = now < p.invulnerableUntil;
+      for (let el = activeEnemyLasersRef.current.length - 1; el >= 0; el--) {
+        const eLaser = activeEnemyLasersRef.current[el];
+        eLaser.mesh.position.addScaledVector(eLaser.velocity, dt);
+        eLaser.life -= dt;
+
+        // Check proximity to player position
+        const distToPlayer = eLaser.mesh.position.distanceTo(p.position);
+        if (distToPlayer < 1.6 && !isInvul) {
+          scene.remove(eLaser.mesh);
+          activeEnemyLasersRef.current.splice(el, 1);
+          createExplosion(eLaser.mesh.position, scene);
+          if (playerHitRef.current) {
+            playerHitRef.current(22, eLaser.shooterName);
+          }
+          continue;
+        }
+
+        if (eLaser.life <= 0 || eLaser.mesh.position.y <= 0.2) {
+          scene.remove(eLaser.mesh);
+          activeEnemyLasersRef.current.splice(el, 1);
+        }
+      }
+
+      // -------------------------------------------------------------
+      // (E) Active Roblox Opponent AI: Move, Strafe, Aim & Shoot!
       // -------------------------------------------------------------
       botMeshesRef.current.forEach((botData, botId) => {
         if (!botData.isRagdolling) {
-          const walkAngle = Math.sin(now * 0.008 + botId.length) * 0.6;
+          let ai = botAiDataRef.current.get(botId);
+          if (!ai) {
+            ai = {
+              lastShootTime: now - Math.random() * 2000,
+              shootIntervalMs: 1800 + Math.random() * 1200,
+              strafeTimer: 0,
+              strafeDirection: Math.random() > 0.5 ? 1 : -1,
+              vx: 0,
+              vz: 0,
+            };
+            botAiDataRef.current.set(botId, ai);
+          }
+
+          const curPos = botData.group.position;
+          const dx = p.position.x - curPos.x;
+          const dz = p.position.z - curPos.z;
+          const distToP = Math.hypot(dx, dz);
+
+          // Aim yaw towards player
+          const targetYaw = Math.atan2(dx, dz);
+          botData.group.rotation.y = THREE.MathUtils.lerp(botData.group.rotation.y, targetYaw, 0.12);
+
+          // Strafe timer update
+          ai.strafeTimer -= dt;
+          if (ai.strafeTimer <= 0) {
+            ai.strafeTimer = 1.6 + Math.random() * 1.5;
+            ai.strafeDirection = Math.random() > 0.35 ? ai.strafeDirection * -1 : ai.strafeDirection;
+          }
+
+          // Move bot towards player or strafe around
+          let moveX = 0;
+          let moveZ = 0;
+          if (distToP > 15) {
+            moveX = (dx / distToP) * 9.5;
+            moveZ = (dz / distToP) * 9.5;
+          } else {
+            // Circle strafe
+            moveX = -(dz / distToP) * 11 * ai.strafeDirection;
+            moveZ = (dx / distToP) * 11 * ai.strafeDirection;
+          }
+
+          curPos.x += moveX * dt;
+          curPos.z += moveZ * dt;
+          curPos.x = Math.max(-48, Math.min(48, curPos.x));
+          curPos.z = Math.max(-48, Math.min(48, curPos.z));
+
+          // Walking leg/arm animation
+          const walkAngle = Math.sin(now * 0.009 + curPos.x + botId.length) * 0.65;
           botData.leftLeg.rotation.x = walkAngle;
           botData.rightLeg.rotation.x = -walkAngle;
-          botData.leftArm.rotation.x = -walkAngle * 0.7;
-          botData.rightArm.rotation.x = walkAngle * 0.7;
+          botData.leftArm.rotation.x = -walkAngle * 0.75;
+          botData.rightArm.rotation.x = walkAngle * 0.75;
+
+          // AI Opponent Shoots Neon Crimson Laser at Player
+          if (now - ai.lastShootTime > ai.shootIntervalMs && distToP < 55) {
+            ai.lastShootTime = now;
+            ai.shootIntervalMs = 1800 + Math.random() * 1400;
+
+            const shootOrigin = curPos.clone().add(new THREE.Vector3(0, 1.3, 0));
+            const toPlayer = new THREE.Vector3().subVectors(p.position, shootOrigin).normalize();
+            // Spread
+            toPlayer.x += (Math.random() - 0.5) * 0.07;
+            toPlayer.y += (Math.random() - 0.5) * 0.05;
+            toPlayer.z += (Math.random() - 0.5) * 0.07;
+            toPlayer.normalize();
+
+            const boltGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.2, 8);
+            const boltMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+            const boltMesh = new THREE.Mesh(boltGeo, boltMat);
+            boltMesh.position.copy(shootOrigin);
+            boltMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), toPlayer);
+            scene.add(boltMesh);
+
+            activeEnemyLasersRef.current.push({
+              mesh: boltMesh,
+              velocity: toPlayer.multiplyScalar(46),
+              life: 2.2,
+              shooterName: botId.startsWith('bot_') ? 'NeonStriker' : 'Raqib Mergan',
+            });
+          }
         } else if (botData.ragdollVelocity) {
           // Ragdoll shatter physics on elimination
           const vels = botData.ragdollVelocity;
@@ -967,10 +1228,14 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
       window.removeEventListener('resize', handleResize);
       renderer.dispose();
       botMeshesRef.current.clear();
+      botAiDataRef.current.clear();
       activeLasersRef.current = [];
+      activeEnemyLasersRef.current = [];
       activeRocketsRef.current = [];
       activeParticlesRef.current = [];
-      if (container) container.innerHTML = '';
+      if (container && renderer.domElement && container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
     };
   }, [inGame, arenaPillars, jumpPads, speedPads, isMuted, playDashWhoosh, playJumpPadSound, playRailgunSound, playRocketSound]);
 
@@ -1660,6 +1925,59 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
     return () => clearInterval(timer);
   }, [inGame]);
 
+  // Real-time Online Duel Sync with other human players
+  useEffect(() => {
+    if (!inGame || !currentUser) return;
+
+    const syncWithServer = async () => {
+      const p = playerPhysicsRef.current;
+      try {
+        const res = await fetch('/api/gameball/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            x: Number(p.position.x.toFixed(2)),
+            y: Number(p.position.y.toFixed(2)),
+            z: Number(p.position.z.toFixed(2)),
+            rotationY: Number(p.yaw.toFixed(2)),
+            health: playerHealth,
+            score: localScore,
+            kills: killsCount,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.players)) {
+            setLivePlayers((prev) => {
+              const botsOnly = prev.filter((pl) => pl.isBot);
+              const others = data.players
+                .filter((sp: any) => sp.id !== currentUser.id)
+                .map((sp: any) => ({
+                  id: sp.id,
+                  name: sp.name,
+                  username: sp.username,
+                  score: sp.score || 0,
+                  health: sp.health || 100,
+                  kills: sp.kills || 0,
+                  x: sp.x || 0,
+                  y: sp.y || 0,
+                  z: sp.z || 0,
+                  yaw: sp.rotationY || 0,
+                  color: sp.color || '#38bdf8',
+                  isBot: false,
+                }));
+              return [...botsOnly, ...others];
+            });
+          }
+        }
+      } catch {}
+    };
+
+    const syncInterval = setInterval(syncWithServer, 1400);
+    return () => clearInterval(syncInterval);
+  }, [inGame, currentUser, playerHealth, localScore, killsCount]);
+
   return (
     <div className="space-y-6">
       {/* Mode Switcher Tabs */}
@@ -1795,6 +2113,55 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
             {/* IN-GAME HUD OVERLAY */}
             {inGame && (
               <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-4 sm:p-6">
+                {/* Red Damage Vignette Flash on Being Shot */}
+                {damageFlash && (
+                  <div className="absolute inset-0 z-30 pointer-events-none bg-red-600/25 border-8 border-red-500/70 shadow-[inset_0_0_100px_rgba(239,68,68,0.8)] animate-pulse" />
+                )}
+
+                {/* Invulnerability Shield Banner (2.5s) */}
+                {isInvulnerable && (
+                  <div className="absolute top-20 inset-x-0 mx-auto w-fit z-30 px-5 py-2 rounded-full bg-cyan-500/85 backdrop-blur-md text-white font-black text-xs sm:text-sm shadow-[0_0_30px_rgba(56,189,248,0.8)] border border-cyan-200 animate-bounce flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-cyan-200" />
+                    <span>⚡ HIMOYA QALQONI FAOL (Zarar yetkazilmaydi!)</span>
+                  </div>
+                )}
+
+                {/* Respawn Countdown Overlay on Death ("O'lsang yana paydo bo'lsin") */}
+                <AnimatePresence>
+                  {isRespawning && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none"
+                    >
+                      <div className="w-20 h-20 rounded-3xl bg-red-500/20 border-2 border-red-400/60 flex items-center justify-center text-red-400 mb-4 shadow-[0_0_40px_rgba(239,68,68,0.5)] animate-bounce">
+                        <ShieldAlert className="w-10 h-10" />
+                      </div>
+                      <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                        💥 SIZ MAG'LUB BO'LDINGIZ!
+                      </h2>
+                      <p className="text-sm text-slate-300 mt-2 max-w-sm">
+                        Xavotir olmang! Siz o'yindan chiqmaysiz — yangi pozitsiyada qayta tirilasiz.
+                      </p>
+
+                      <div className="mt-5 flex items-center gap-3 text-2xl sm:text-3xl font-black font-mono text-cyan-300">
+                        <span>Qayta paydo bo'lish:</span>
+                        <span className="px-4 py-1.5 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 shadow-inner">
+                          {respawnTimer} s
+                        </span>
+                      </div>
+
+                      <div className="w-64 h-2.5 rounded-full bg-slate-800 mt-5 overflow-hidden border border-slate-700">
+                        <div
+                          className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-1000"
+                          style={{ width: `${((3 - respawnTimer) / 3) * 100}%` }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Top HUD: Score, Streak, Timer */}
                 <div className="flex items-center justify-between gap-4">
                   {/* Left: Score & Kills */}
@@ -1967,11 +2334,21 @@ export const KiteshotGameView: React.FC<KiteshotGameViewProps> = ({
                     })}
                   </div>
 
-                  {/* Right: Health & Reload Button */}
+                  {/* Right: Health, Shield & Reload Button */}
                   <div className="flex items-center gap-3 bg-slate-950/80 backdrop-blur-md p-3 px-5 rounded-2xl border border-slate-800">
                     <div>
+                      <div className="text-[10px] text-cyan-400 font-mono uppercase flex items-center gap-1">
+                        <span>🛡️ Qalqon</span>
+                        <span>({playerShield}/50)</span>
+                      </div>
+                      <div className="text-sm font-black text-cyan-300">{playerShield}</div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-800" />
+                    <div>
                       <div className="text-[10px] text-slate-400 font-mono uppercase">Jon (HP)</div>
-                      <div className="text-xl font-black text-emerald-400">{playerHealth} / 100</div>
+                      <div className={`text-xl font-black ${playerHealth < 35 ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+                        {playerHealth} / 100
+                      </div>
                     </div>
                     <div className="h-8 w-px bg-slate-800" />
                     <div>

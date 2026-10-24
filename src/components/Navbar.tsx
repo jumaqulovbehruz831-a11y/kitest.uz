@@ -36,6 +36,7 @@ import {
   CheckCircle2,
   MessageSquare,
   Radio,
+  ShoppingBag,
 } from 'lucide-react';
 
 export type NavTab =
@@ -54,6 +55,8 @@ export type NavTab =
   | 'roadmap'
   | 'my_classes'
   | 'create_test'
+  | 'gemini_ai'
+  | 'kitestgram'
   | 'contests'
   | 'submissions'
   | 'leaderboard'
@@ -65,6 +68,7 @@ export type NavTab =
   | 'gameball'
   | 'how_it_works'
   | 'our_team'
+  | 'shop'
   | 'admin';
 
 interface NavbarProps {
@@ -285,6 +289,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden xl:inline text-[10px] font-mono text-purple-700 font-bold">
                 ({currentUser.scoreMultiplier || 1}x)
               </span>
+            </button>
+
+            {/* 4. DO'KON TUGMASI (Ballarni sarflash markazi) */}
+            <button
+              type="button"
+              onClick={() => setCurrentTab('shop')}
+              className={`py-1 px-3 rounded-full text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+                currentTab === 'shop'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-400'
+                  : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-200 border border-emerald-400/40'
+              }`}
+              title="Do'kon: Ballar evaziga sertifikatlar, unvonlar, qurollar va biletlar sotib oling!"
+            >
+              <ShoppingBag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Do'kon</span>
             </button>
           </div>
         )}

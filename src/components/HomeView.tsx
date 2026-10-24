@@ -5,6 +5,7 @@ import {
   User,
   Submission,
   Contest,
+  ADMIN_EMAIL,
 } from '../types';
 import { NavTab } from './Navbar';
 import { Kitest3DKiteIllustration } from './KitestKiteLogo';
@@ -31,6 +32,9 @@ import {
   Play,
   Edit3,
   ExternalLink,
+  Plus,
+  Trash2,
+  X,
 } from 'lucide-react';
 
 interface HomeViewProps {
@@ -51,8 +55,25 @@ interface HomeViewProps {
   onOpenCertificatesStore?: () => void;
   onOpenLuckyWheel?: () => void;
   onOpenProfile?: () => void;
+  onOpenImageShowcase?: (imgOrUrl?: any) => void;
   onUpdateUser?: (user: User) => void;
   onRefreshState?: () => void;
+}
+
+export interface AnnouncementItem {
+  id: string;
+  title: string;
+  content: string;
+  category: 'olimpiada' | 'coding' | 'yangilik' | 'tanlov';
+  categoryLabel: string;
+  categoryColor: string;
+  emoji: string;
+  date: string;
+  isPinned?: boolean;
+  linkUrl?: string;
+  videoUrl?: string;
+  targetTab?: NavTab;
+  isGalleryTrigger?: boolean;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -60,32 +81,241 @@ export const HomeView: React.FC<HomeViewProps> = ({
   users,
   submissions,
   currentUser,
+  isAdminUnlocked,
   onSelectTest,
   onNavigate,
   onOpenCertificatesStore,
   onOpenLuckyWheel,
+  onOpenImageShowcase,
 }) => {
   const [selectedSubject, setSelectedSubject] = useState<string>('Barchasi');
   const [searchFilter, setSearchFilter] = useState<string>('');
-  const [promoVideoPlaying, setPromoVideoPlaying] = useState<boolean>(false);
-  const [promoVideoSeconds, setPromoVideoSeconds] = useState<number>(0);
-  const [activeVideoChapter, setActiveVideoChapter] = useState<number>(0);
+  const [announcementCategory, setAnnouncementCategory] = useState<
+    'all' | 'olimpiada' | 'coding' | 'yangilik'
+  >('all');
+  const [announcementSearch, setAnnouncementSearch] = useState('');
 
-  // 2-minute promotional video timer
+  const isUserAdmin = Boolean(
+    isAdminUnlocked ||
+      currentUser?.role === 'admin' ||
+      currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ||
+      currentUser?.username === 'behruz_admin'
+  );
+
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('kitest_announcements_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      {
+        id: 'ann_1',
+        title: '🏆 Respublika CHSB & Matematika Fan Olimpiadasi Boshlandi!',
+        category: 'olimpiada',
+        categoryLabel: 'Fan Olimpiadasi',
+        categoryColor: 'bg-amber-100 text-amber-800 border-amber-300',
+        emoji: '🏆',
+        date: '24-Oktyabr, 2026',
+        isPinned: true,
+        content:
+          'Barcha 5-11 sinf o‘quvchilari va abituriyentlar uchun yangi bosqich masalalari ochildi. Eng yuqori ball to‘plagan 3 kishiga rasmiy Oltin sertifikat va sovg‘alar taqdim etiladi.',
+        targetTab: 'contests',
+      },
+      {
+        id: 'ann_2',
+        title: '🚀 Kiteshot 3D Real-Time Duel & Yangi Harakat Mexanikasi',
+        category: 'coding',
+        categoryLabel: 'Kiteshot 3D',
+        categoryColor: 'bg-sky-100 text-sky-800 border-sky-300',
+        emoji: '🎮',
+        date: '23-Oktyabr, 2026',
+        isPinned: true,
+        content:
+          'Roblox Hypershot uslubidagi harakatlar, raqiblarning lazer bilan otishi, o‘lganda qayta paydo bo‘lish (respawn) va himoya qalqoni tizimi ishga tushirildi! 1-o‘rin egalariga 3 ta ball beriladi.',
+        targetTab: 'gameball',
+      },
+      {
+        id: 'ann_3',
+        title: '🤖 KitestAI Pro: Ultra-Tezkor Intellektual Neyrotizim Ishga Tushdi!',
+        category: 'yangilik',
+        categoryLabel: 'KitestAI Pro',
+        categoryColor: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+        emoji: '⚡',
+        date: 'Bugun',
+        isPinned: true,
+        content:
+          'Matematika, Fizika, Dasturlash va barcha fan savollariga ultra-tezkor va xotirali rejimda 100% mukammal javob beruvchi yangi intellektual assistent tayyor!',
+        targetTab: 'gemini_ai',
+      },
+      {
+        id: 'ann_4',
+        title: '✈️ KitestGram: Telegram Dek Haqiqiy Onlayn Muloqot',
+        category: 'yangilik',
+        categoryLabel: 'KitestGram',
+        categoryColor: 'bg-sky-100 text-sky-800 border-sky-300',
+        emoji: '✈️',
+        date: 'Bugun',
+        isPinned: true,
+        content:
+          'Telegram ko‘rinishidagi xabarlar, kanallar, guruhlar, ovozli xabarlar va jonli emotsiyalar bilan real vaqtda yozishing!',
+        targetTab: 'kitestgram',
+      },
+    ];
+  });
+
   useEffect(() => {
-    if (!promoVideoPlaying) return;
-    const interval = setInterval(() => {
-      setPromoVideoSeconds((prev) => {
-        if (prev >= 120) {
-          clearInterval(interval);
-          setPromoVideoPlaying(false);
-          return 0;
+    fetch('/api/announcements')
+      .then((res) => res.json())
+      .then((data) => {
+        if (
+          data &&
+          Array.isArray(data.announcements) &&
+          data.announcements.length > 0
+        ) {
+          setAnnouncements(data.announcements);
+          try {
+            localStorage.setItem(
+              'kitest_announcements_v2',
+              JSON.stringify(data.announcements)
+            );
+          } catch {}
         }
-        return prev + 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [promoVideoPlaying]);
+      })
+      .catch(() => {});
+  }, []);
+
+  const [isAnnModalOpen, setIsAnnModalOpen] = useState(false);
+  const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
+  const [annFormData, setAnnFormData] = useState<{
+    title: string;
+    content: string;
+    category: 'olimpiada' | 'coding' | 'yangilik' | 'tanlov';
+    categoryLabel: string;
+    emoji: string;
+    linkUrl: string;
+    videoUrl: string;
+    targetTab: NavTab;
+    isPinned: boolean;
+  }>({
+    title: '',
+    content: '',
+    category: 'yangilik',
+    categoryLabel: 'Yangilik',
+    emoji: '📢',
+    linkUrl: '',
+    videoUrl: '',
+    targetTab: 'problems',
+    isPinned: false,
+  });
+
+  const handleOpenCreateAnnouncement = () => {
+    setEditingAnnId(null);
+    setAnnFormData({
+      title: '',
+      content: '',
+      category: 'yangilik',
+      categoryLabel: 'Yangilik',
+      emoji: '📢',
+      linkUrl: '',
+      videoUrl: '',
+      targetTab: 'problems',
+      isPinned: false,
+    });
+    setIsAnnModalOpen(true);
+  };
+
+  const handleOpenEditAnnouncement = (ann: AnnouncementItem) => {
+    setEditingAnnId(ann.id);
+    setAnnFormData({
+      title: ann.title,
+      content: ann.content,
+      category: ann.category,
+      categoryLabel: ann.categoryLabel,
+      emoji: ann.emoji || '📢',
+      linkUrl: ann.linkUrl || '',
+      videoUrl: ann.videoUrl || '',
+      targetTab: ann.targetTab || 'problems',
+      isPinned: Boolean(ann.isPinned),
+    });
+    setIsAnnModalOpen(true);
+  };
+
+  const handleSaveAnnouncement = async () => {
+    if (!annFormData.title.trim()) {
+      alert("Iltimos, e'lon sarlavhasini kiriting!");
+      return;
+    }
+
+    let cleanVideo = annFormData.videoUrl.trim();
+    if (cleanVideo.includes('watch?v=')) {
+      cleanVideo = cleanVideo.replace('watch?v=', 'embed/');
+    }
+
+    const payload = {
+      title: annFormData.title.trim(),
+      content: annFormData.content.trim(),
+      category: annFormData.category,
+      categoryLabel: annFormData.categoryLabel,
+      emoji: annFormData.emoji,
+      linkUrl: annFormData.linkUrl.trim() || undefined,
+      videoUrl: cleanVideo || undefined,
+      targetTab: annFormData.targetTab,
+      isPinned: annFormData.isPinned,
+    };
+
+    if (editingAnnId) {
+      // Edit existing
+      setAnnouncements((prev) =>
+        prev.map((item) =>
+          item.id === editingAnnId ? { ...item, ...payload } : item
+        )
+      );
+      try {
+        await fetch(`/api/admin/announcements/${editingAnnId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch {}
+    } else {
+      // Create new
+      const newAnn: AnnouncementItem = {
+        id: `ann_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        date: 'Bugun',
+        categoryColor:
+          annFormData.category === 'olimpiada'
+            ? 'bg-amber-100 text-amber-800 border-amber-300'
+            : annFormData.category === 'coding'
+            ? 'bg-sky-100 text-sky-800 border-sky-300'
+            : 'bg-indigo-100 text-indigo-800 border-indigo-300',
+        ...payload,
+      };
+      setAnnouncements((prev) => [newAnn, ...prev]);
+      try {
+        await fetch('/api/admin/announcements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch {}
+    }
+
+    setIsAnnModalOpen(false);
+  };
+
+  const handleDeleteAnnouncement = async (id: string) => {
+    if (window.confirm("Rostdan ham ushbu e'lonni o'chirmoqchimisiz?")) {
+      setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+      try {
+        await fetch(`/api/admin/announcements/${id}`, {
+          method: 'DELETE',
+        });
+      } catch {}
+    }
+  };
 
   // 100% REAL statistics based on actual user activity and database records
   const completedTestsCount = useMemo(() => {
@@ -243,193 +473,410 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2-MINUTLIK RASMIY REKLAMA VIDEOSI (ZAMONAVIY USLUBDA)                      */}
+      {/* 2. E'LONLAR VA YANGILIKLAR DOSKASI (ADMIN BOSHQARADI: LINK, VIDEO, YOZUV, EMOTSIYA, PERIXOD) */}
       {/* ========================================================================= */}
-      <div className="relative rounded-3xl overflow-hidden bg-white border border-slate-200/90 shadow-sm p-6 sm:p-7 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="relative rounded-3xl overflow-hidden bg-white border border-slate-200/90 shadow-sm p-6 sm:p-7 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-md">
-              <Video className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-center shadow-md shrink-0">
+              <Megaphone className="w-6 h-6" />
             </div>
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 font-mono text-[10px] font-bold">
-                <Sparkles className="w-3 h-3 text-sky-500" />
-                <span>RASMIY TAQDIMOT REKLAMASI</span>
-                <span className="ml-1 px-1.5 py-0.2 rounded bg-sky-600 text-white text-[9px] font-black tracking-wider">
-                  720p HD
-                </span>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200/60 text-amber-800 font-mono text-[11px] font-bold">
+                <Pin className="w-3 h-3 text-amber-600" />
+                <span>RASMIY E'LONLAR & YANGILIKLAR</span>
               </div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 mt-0.5">
-                KITEST Education: Barcha imkoniyatlar (720p HD Video)
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 mt-0.5">
+                Muhim Xabarlar & Maxsus E'lonlar
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold text-slate-600 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span>720p HD</span>
-              <span>•</span>
-              <span>
-                {String(Math.floor(promoVideoSeconds / 60)).padStart(2, '0')}:
-                {String(promoVideoSeconds % 60).padStart(2, '0')} / 02:00
-              </span>
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setPromoVideoPlaying(!promoVideoPlaying)}
-              className="py-2 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-md shadow-sky-600/20 flex items-center gap-1.5 cursor-pointer transition-transform active:scale-95"
-            >
-              {promoVideoPlaying ? (
-                <>
-                  <Clock className="w-4 h-4" />
-                  <span>To'xtatish</span>
-                </>
-              ) : (
-                <>
-                  <ArrowRight className="w-4 h-4" />
-                  <span>Videoni Ko'rish (720p)</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Video Player Display Container */}
-        <div className="relative w-full h-64 sm:h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border border-slate-800 flex items-center justify-center shadow-inner group">
-          <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.4)_0%,transparent_70%)]" />
-
-          {/* Chapter Presentation Visualizer */}
-          <div className="relative text-center p-6 space-y-3 z-10 max-w-lg">
-            {promoVideoSeconds < 30 ? (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key="ch1" className="space-y-2">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-400/40">
-                  <Kitest3DKiteIllustration size={44} />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-white">
-                  Oq va Zamonaviy Dizaynda Ilm Maskani
-                </h3>
-                <p className="text-xs text-slate-300">
-                  CHSB, BSB, Fan olimpiadalari va dasturlash bo'yicha eng kuchli o'zbek ta'lim platformasi.
-                </p>
-              </motion.div>
-            ) : promoVideoSeconds < 60 ? (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key="ch2" className="space-y-2">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-400/40">
-                  <Swords className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-amber-300">
-                  Kiteshot 3D & Roblox Uslubidagi Otishma
-                </h3>
-                <p className="text-xs text-slate-300">
-                  Real onlayn bolalar bilan 3D shaklda bilimlar va reflekslar bellashuvi!
-                </p>
-              </motion.div>
-            ) : promoVideoSeconds < 90 ? (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key="ch3" className="space-y-2">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-400/40">
-                  <Video className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-emerald-300">
-                  Jonli Video Majlis & Telegram Chat
-                </h3>
-                <p className="text-xs text-slate-300">
-                  Ustozlar va adminlar bilan yuzma-yuz video konferensiyalar hamda qulay guruhlar.
-                </p>
-              </motion.div>
-            ) : (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key="ch4" className="space-y-2">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-400/40">
-                  <Star className="w-8 h-8 fill-current text-purple-400" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-purple-300">
-                  Apple Face ID & Rasmiy Sertifikatlar
-                </h3>
-                <p className="text-xs text-slate-300">
-                  1 soniyada xavfsiz Face ID orqali kirish va avtomatik ism-familiyali rasmiy sertifikatlar!
-                </p>
-              </motion.div>
-            )}
-
-            {!promoVideoPlaying && (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Admin Add Announcement Button */}
+            {isUserAdmin && (
               <button
                 type="button"
-                onClick={() => setPromoVideoPlaying(true)}
-                className="mt-3 py-2.5 px-6 rounded-full bg-white text-slate-900 font-black text-xs shadow-xl hover:scale-105 transition-all inline-flex items-center gap-2 cursor-pointer"
+                onClick={handleOpenCreateAnnouncement}
+                className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-orange-500/20 transition-all cursor-pointer"
               >
-                <span>▶ Ijroni boshlash</span>
+                <Plus className="w-4 h-4" />
+                <span>E'lon Qo'shish (Admin)</span>
               </button>
             )}
-          </div>
 
-          {/* Progress Scrub Bar */}
-          <div className="absolute bottom-0 inset-x-0 h-1.5 bg-slate-800">
-            <div
-              className="bg-gradient-to-r from-sky-400 to-indigo-500 h-full transition-all duration-300"
-              style={{ width: `${(promoVideoSeconds / 120) * 100}%` }}
-            />
+            {onOpenImageShowcase && (
+              <button
+                type="button"
+                onClick={() => onOpenImageShowcase()}
+                className="py-2 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span>🖼️ Fotogalereya</span>
+              </button>
+            )}
+
+            {/* Category Tabs */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+              {[
+                { id: 'all', label: 'Barchasi' },
+                { id: 'olimpiada', label: '🏆 Olimpiada' },
+                { id: 'coding', label: '🎮 Kiteshot' },
+                { id: 'yangilik', label: '⚡ Yangilik' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setAnnouncementCategory(tab.id as any)}
+                  className={`py-1.5 px-2.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs ${
+                    announcementCategory === tab.id
+                      ? 'bg-white text-slate-900 shadow-sm font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Video Bookmarks */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => {
-              setPromoVideoSeconds(0);
-              setPromoVideoPlaying(true);
-            }}
-            className={`p-2 rounded-xl text-left border transition-all ${
-              promoVideoSeconds < 30 ? 'bg-sky-50 border-sky-300 text-sky-900' : 'bg-slate-50 border-slate-200 text-slate-600'
-            }`}
-          >
-            <div className="text-[10px] font-mono text-slate-400">00:00 - 00:30</div>
-            <div className="font-bold truncate">1. Oq zamonaviy platforma</div>
-          </button>
+        {/* Announcement Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {announcements
+            .filter((item) =>
+              announcementCategory === 'all' ? true : item.category === announcementCategory
+            )
+            .map((item) => (
+              <div
+                key={item.id}
+                className={`p-5 rounded-2xl border transition-all space-y-4 flex flex-col justify-between ${
+                  item.isPinned
+                    ? 'border-amber-200 bg-gradient-to-br from-amber-50/50 via-white to-white shadow-sm'
+                    : 'border-slate-200 hover:border-sky-300 bg-white hover:shadow-md'
+                }`}
+              >
+                <div className="space-y-3">
+                  {/* Category + Date + Emoji */}
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl shrink-0">{item.emoji || '📢'}</span>
+                      <span className={`px-2.5 py-0.5 rounded-md font-bold border text-[11px] ${item.categoryColor || 'bg-slate-100 text-slate-800 border-slate-200'}`}>
+                        {item.categoryLabel}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {item.isPinned && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-black text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-300/60">
+                          <Pin className="w-3 h-3 fill-current" />
+                          Qadalgan
+                        </span>
+                      )}
+                      <span className="text-[11px] font-mono text-slate-400">{item.date}</span>
+                    </div>
+                  </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setPromoVideoSeconds(30);
-              setPromoVideoPlaying(true);
-            }}
-            className={`p-2 rounded-xl text-left border transition-all ${
-              promoVideoSeconds >= 30 && promoVideoSeconds < 60 ? 'bg-sky-50 border-sky-300 text-sky-900' : 'bg-slate-50 border-slate-200 text-slate-600'
-            }`}
-          >
-            <div className="text-[10px] font-mono text-slate-400">00:30 - 01:00</div>
-            <div className="font-bold truncate">2. Kiteshot 3D Otishma</div>
-          </button>
+                  {/* Title */}
+                  <h3 className="text-base font-black text-slate-900 leading-snug">
+                    {item.title}
+                  </h3>
 
-          <button
-            type="button"
-            onClick={() => {
-              setPromoVideoSeconds(60);
-              setPromoVideoPlaying(true);
-            }}
-            className={`p-2 rounded-xl text-left border transition-all ${
-              promoVideoSeconds >= 60 && promoVideoSeconds < 90 ? 'bg-sky-50 border-sky-300 text-sky-900' : 'bg-slate-50 border-slate-200 text-slate-600'
-            }`}
-          >
-            <div className="text-[10px] font-mono text-slate-400">01:00 - 01:30</div>
-            <div className="font-bold truncate">3. Majlis & Telegram Chat</div>
-          </button>
+                  {/* Text / Content */}
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                    {item.content}
+                  </p>
 
-          <button
-            type="button"
-            onClick={() => {
-              setPromoVideoSeconds(90);
-              setPromoVideoPlaying(true);
-            }}
-            className={`p-2 rounded-xl text-left border transition-all ${
-              promoVideoSeconds >= 90 ? 'bg-sky-50 border-sky-300 text-sky-900' : 'bg-slate-50 border-slate-200 text-slate-600'
-            }`}
-          >
-            <div className="text-[10px] font-mono text-slate-400">01:30 - 02:00</div>
-            <div className="font-bold truncate">4. Face ID & Sertifikat</div>
-          </button>
+                  {/* Optional Video Embed */}
+                  {item.videoUrl && (
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-slate-200 shadow-inner mt-2">
+                      <iframe
+                        src={item.videoUrl}
+                        title={item.title}
+                        className="w-full h-full object-cover"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Actions & Perixod */}
+                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 mt-2">
+                  <div className="flex items-center gap-2">
+                    {/* External Link */}
+                    {item.linkUrl && (
+                      <a
+                        href={item.linkUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Havola</span>
+                      </a>
+                    )}
+
+                    {/* Navigation Perixod */}
+                    {item.targetTab && (
+                      <button
+                        type="button"
+                        onClick={() => onNavigate(item.targetTab!)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-black shadow-sm transition-all cursor-pointer"
+                      >
+                        <span>Bo'limga o'tish</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {item.isGalleryTrigger && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenImageShowcase?.()}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Rasmlarni ko'rish</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Admin Edit & Delete buttons */}
+                  {isUserAdmin && (
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditAnnouncement(item)}
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                        title="Tahrirlash"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAnnouncement(item.id)}
+                        className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                        title="O'chirish"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
         </div>
+
+        {/* Admin Announcement Creation / Edit Modal */}
+        {isAnnModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{annFormData.emoji || '📢'}</span>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900">
+                      {editingAnnId ? "E'lonni Tahrirlash" : "Yangi E'lon Qo'shish"}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Foydalanuvchilarga ko'rinadigan muhim yangilik va perixod
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAnnModalOpen(false)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                {/* Sarlavha */}
+                <div>
+                  <label className="block font-black text-slate-700 mb-1">
+                    Sarlavha (Yozuv): *
+                  </label>
+                  <input
+                    type="text"
+                    value={annFormData.title}
+                    onChange={(e) =>
+                      setAnnFormData({ ...annFormData, title: e.target.value })
+                    }
+                    placeholder="Masalan: 🏆 Katta Respublika Olimpiadasi boshlandi!"
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-900 font-bold focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Yozuv / Matn */}
+                <div>
+                  <label className="block font-black text-slate-700 mb-1">
+                    Batafsil matn (Yozuv):
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={annFormData.content}
+                    onChange={(e) =>
+                      setAnnFormData({ ...annFormData, content: e.target.value })
+                    }
+                    placeholder="E'lon haqida to'liq tushuntirish va shartlar..."
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Emotsiya & Kategoriya */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-black text-slate-700 mb-1">
+                      Emotsiya (Stiker):
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      {['📢', '🏆', '🚀', '🤖', '🎮', '💎'].map((em) => (
+                        <button
+                          key={em}
+                          type="button"
+                          onClick={() => setAnnFormData({ ...annFormData, emoji: em })}
+                          className={`w-8 h-8 rounded-lg text-sm flex items-center justify-center border cursor-pointer ${
+                            annFormData.emoji === em
+                              ? 'border-amber-500 bg-amber-50'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          {em}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-black text-slate-700 mb-1">
+                      Kategoriya:
+                    </label>
+                    <select
+                      value={annFormData.category}
+                      onChange={(e) => {
+                        const val = e.target.value as any;
+                        const labelMap: Record<string, string> = {
+                          yangilik: 'Yangilik',
+                          olimpiada: 'Fan Olimpiadasi',
+                          coding: 'Kiteshot 3D',
+                          tanlov: 'Maxsus Tanlov',
+                        };
+                        setAnnFormData({
+                          ...annFormData,
+                          category: val,
+                          categoryLabel: labelMap[val] || 'Yangilik',
+                        });
+                      }}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-slate-800 font-bold focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="yangilik">⚡ Yangilik</option>
+                      <option value="olimpiada">🏆 Fan Olimpiadasi</option>
+                      <option value="coding">🎮 Kiteshot 3D</option>
+                      <option value="tanlov">🎯 Maxsus Tanlov</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Video havola */}
+                <div>
+                  <label className="block font-black text-slate-700 mb-1">
+                    Video havola (YouTube / embed):
+                  </label>
+                  <input
+                    type="text"
+                    value={annFormData.videoUrl}
+                    onChange={(e) =>
+                      setAnnFormData({ ...annFormData, videoUrl: e.target.value })
+                    }
+                    placeholder="https://www.youtube.com/embed/... yoki watch?v=..."
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-900 font-mono text-xs focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Tashqi Link */}
+                <div>
+                  <label className="block font-black text-slate-700 mb-1">
+                    Tashqi Link (Havola):
+                  </label>
+                  <input
+                    type="text"
+                    value={annFormData.linkUrl}
+                    onChange={(e) =>
+                      setAnnFormData({ ...annFormData, linkUrl: e.target.value })
+                    }
+                    placeholder="https://t.me/... yoki https://kitest.uz/..."
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-slate-900 font-mono text-xs focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Perixod (Target Tab) */}
+                <div>
+                  <label className="block font-black text-slate-700 mb-1">
+                    Perixod (Bo'limga o'tish tugmasi):
+                  </label>
+                  <select
+                    value={annFormData.targetTab}
+                    onChange={(e) =>
+                      setAnnFormData({
+                        ...annFormData,
+                        targetTab: e.target.value as NavTab,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-800 font-bold focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="problems">📚 Testlar & Masalalar (problems)</option>
+                    <option value="contests">🏆 Fan Olimpiadalari (contests)</option>
+                    <option value="gameball">🎮 Kiteshot 3D O'yini (gameball)</option>
+                    <option value="gemini_ai">🤖 KitestAI Gemini Universal (gemini_ai)</option>
+                    <option value="kitestgram">✈️ KitestGram Onlayn Chat (kitestgram)</option>
+                    <option value="majlis">🎥 Jonli Video Majlis (majlis)</option>
+                    <option value="courses">🎓 Onlayn Kurslar (courses)</option>
+                    <option value="duels">⚔️ Jonli Duellar (duels)</option>
+                    <option value="leaderboard">🏅 Reyting & Pes HQadamlar (leaderboard)</option>
+                  </select>
+                </div>
+
+                {/* Pinned checkbox */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="isPinnedCheck"
+                    checked={annFormData.isPinned}
+                    onChange={(e) =>
+                      setAnnFormData({ ...annFormData, isPinned: e.target.checked })
+                    }
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                  />
+                  <label
+                    htmlFor="isPinnedCheck"
+                    className="font-bold text-slate-700 cursor-pointer select-none"
+                  >
+                    Ushbu e'lonni yuqoriga qadash (Pinned)
+                  </label>
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAnnModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAnnouncement}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-black shadow-md shadow-orange-500/20 cursor-pointer"
+                >
+                  {editingAnnId ? "Saqlash" : "E'lonni Chiqarish"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

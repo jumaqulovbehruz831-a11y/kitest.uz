@@ -505,6 +505,44 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
   };
 
+  const handleQuickSave = () => {
+    if (!name.trim() || !username.trim()) {
+      setError("Ism va Username bo'sh bo'lishi mumkin emas!");
+      return;
+    }
+    const updated: User = {
+      ...user,
+      name: name.trim(),
+      username: username.trim().toLowerCase().replace(/^@+/, ''),
+      email: email.trim().toLowerCase(),
+      region,
+      district,
+      institution: institution.trim(),
+      telegram: telegram.trim(),
+      bio: bio.trim(),
+      avatarUrl: avatarUrl.trim(),
+      avatarEmoji: avatarEmoji.trim(),
+      avatarColor,
+      customBadge: customBadge.trim(),
+    };
+    onUpdateUser(updated);
+    playKitestSound('success', soundEnabled);
+    setShowSaveEmotes(true);
+    setMessage('💾 1. Tezkor saqlash muvaffaqiyatli amalga oshirildi!');
+    setTimeout(() => setShowSaveEmotes(false), 1600);
+  };
+
+  const handleCloudSave = async () => {
+    await handleSave();
+  };
+
+  const handleFullSaveAndSync = async () => {
+    await handleSave();
+    try {
+      window.dispatchEvent(new CustomEvent('kitest:refresh'));
+    } catch {}
+  };
+
   const currentDistricts = UZBEKISTAN_LOCATIONS[region] || [];
 
   const buildCertificateFromSubmission = (sub: Submission): CertificateData => ({
@@ -1511,15 +1549,41 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleSave()}
-              disabled={saving}
-              className="py-2.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-extrabold text-white flex items-center gap-1.5 shadow-lg shadow-emerald-600/25"
-            >
-              <Save className="w-4 h-4" />
-              <span>{saving ? 'Saqlanmoqda...' : "O'zgarishlarni Saqlash"}</span>
-            </button>
+            {/* 3 DISTINCT SAVE BUTTONS ON RIGHT EDGE */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleQuickSave}
+                disabled={saving}
+                className="py-2.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-sky-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow"
+                title="Mahalliy tezkor saqlash"
+              >
+                <Save className="w-4 h-4 text-sky-400" />
+                <span>1. Tezkor saqlash</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCloudSave}
+                disabled={saving}
+                className="py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-xs font-extrabold text-white flex items-center gap-1.5 shadow-md shadow-sky-600/30 transition-all cursor-pointer"
+                title="Server bazasiga saqlash"
+              >
+                <Upload className="w-4 h-4" />
+                <span>{saving ? 'Saqlanmoqda...' : '2. Serverga saqlash'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleFullSaveAndSync}
+                disabled={saving}
+                className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-xs font-black text-white flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                title="To'liq saqlash va yangilash"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-200" />
+                <span>3. To'liq saqlash & Yangilash</span>
+              </button>
+            </div>
           </div>
         </motion.div>
 

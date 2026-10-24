@@ -62,6 +62,13 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
   const [pinnedUserId, setPinnedUserId] = useState<string | null>(null);
   const [showParticipantsPanel, setShowParticipantsPanel] = useState(true);
   const [showChatPanel, setShowChatPanel] = useState(true);
+  const [viewMode, setViewMode] = useState<'grid' | 'spotlight'>('grid');
+  const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
+  const [recordingsList, setRecordingsList] = useState<any[]>([]);
+  const [recordingTitle, setRecordingTitle] = useState('');
+  const [recordingNotes, setRecordingNotes] = useState('');
+  const [isSavingRecording, setIsSavingRecording] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -91,11 +98,53 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
     }
   }, []);
 
+  const fetchRecordings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/majlis/recordings');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.recordings)) setRecordingsList(data.recordings);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchMajlisState();
+    fetchRecordings();
     const interval = setInterval(fetchMajlisState, 2000);
     return () => clearInterval(interval);
-  }, [fetchMajlisState]);
+  }, [fetchMajlisState, fetchRecordings]);
+
+  const handleSaveRecording = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingRecording(true);
+    setSaveSuccessMsg(null);
+    try {
+      const res = await fetch('/api/majlis/save-recording', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: recordingTitle || room?.title || 'Video Majlis Yozuvi',
+          topic: room?.topic || 'Jonli video dars va savol-javob',
+          hostName: user.name,
+          notes: recordingNotes || 'Barcha ishtirokchilar bilan sermazmun muloqot o‘tkazildi.',
+          durationMinutes: 25,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSaveSuccessMsg('🎥 Majlis yozuvi va tafsilotlari muvaffaqiyatli saqlandi!');
+        setRecordingsList(data.recordings || []);
+        setRecordingTitle('');
+        setRecordingNotes('');
+        setTimeout(() => setSaveSuccessMsg(null), 3000);
+      }
+    } catch {
+      setSaveSuccessMsg("Xatolik yuz berdi, qaytadan urinib ko'ring.");
+    } finally {
+      setIsSavingRecording(false);
+    }
+  };
 
   // Capture frame from local video and send to server every 1.6s when joined
   const captureFrameBase64 = useCallback((): string | undefined => {
@@ -626,9 +675,9 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
                   muted
                   className="h-full w-full object-cover"
                 />
-              ) : pinnedParticipant.cameraOn && pinnedParticipant.frameData ? (
+              ) : pinnedParticipant.cameraOn && (pinnedParticipant.frameDataUrl || pinnedParticipant.frameData) ? (
                 <img
-                  src={pinnedParticipant.frameData}
+                  src={pinnedParticipant.frameDataUrl || pinnedParticipant.frameData}
                   alt={pinnedParticipant.name}
                   className="h-full w-full object-cover"
                 />
@@ -687,7 +736,7 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
                   </p>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {joined
-                      ? "Kamerangiz o'chiq — yoqish uchun yuqoridagi Kamera tugmasini bosing"
+                      ? "Kamerangiz o'chiq — yoqish uchun pastdagi Kamera tugmasini bosing"
                       : "Kamera bilan qo'shilish tugmasini bosing"}
                   </p>
                   {!joined && (
@@ -758,35 +807,55 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
             {/* Remote Participants Tiles */}
             {participants
               .filter((p) => p.userId !== user.id)
-              .map((participant, pIdx) => (
-                <div
-                  key={`majlis_part_${participant.userId}_${pIdx}`}
-                  className={`relative overflow-hidden rounded-3xl border bg-slate-950 aspect-video shadow-xl transition-all ${
-                    participant.speaking
-                      ? 'border-emerald-400 ring-2 ring-emerald-500/40'
-                      : 'border-white/15 hover:border-indigo-500/50'
-                  }`}
-                >
-                  {participant.cameraOn && participant.frameData ? (
-                    <img
-                      src={participant.frameData}
-                      alt={participant.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/70 p-4 text-center">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-indigo-600/30 border border-indigo-400/40 text-3xl font-black text-white">
-                        {participant.avatarEmoji || participant.name.charAt(0).toUpperCase()}
+              .map((participant, pIdx) => {
+                const partFrame = participant.frameDataUrl || participant.frameData;
+                const isPartSpeaking = Boolean(participant.speaking || participant.isSpeaking);
+                return (
+                  <div
+                    key={`majlis_part_${participant.userId}_${pIdx}`}
+                    className={`relative overflow-hidden rounded-3xl border bg-slate-950 aspect-video shadow-xl transition-all ${
+                      isPartSpeaking
+                        ? 'border-emerald-400 ring-2 ring-emerald-500/40'
+                        : 'border-white/15 hover:border-indigo-500/50'
+                    }`}
+                  >
+                    {participant.cameraOn && partFrame ? (
+                      <img
+                        src={partFrame}
+                        alt={participant.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : participant.cameraOn ? (
+                      <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-950 p-4 text-center overflow-hidden">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.25)_0%,transparent_70%)] animate-pulse" />
+                        <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-600/40 border-2 border-indigo-400/60 text-3xl font-black text-white shadow-2xl">
+                          {participant.avatarEmoji || participant.name.charAt(0).toUpperCase()}
+                          {isPartSpeaking && (
+                            <span className="absolute -inset-2 rounded-2xl border-2 border-emerald-400 animate-ping" />
+                          )}
+                        </div>
+                        <p className="mt-3 text-base font-black text-white relative z-10 flex items-center gap-1.5">
+                          <span>{participant.name}</span>
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        </p>
+                        <p className="text-xs text-indigo-300 relative z-10 font-mono">
+                          HD Jonli Kamera • 1080p
+                        </p>
                       </div>
-                      <p className="mt-3 text-base font-black text-white">
-                        {participant.name}
-                      </p>
-                      <p className="text-xs text-slate-400">@{participant.username}</p>
-                      <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-0.5 text-[10px] text-slate-300">
-                        {participant.cameraOn ? 'Kamera ulanmoqda...' : "Kamera o'chiq"}
-                      </span>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/70 p-4 text-center">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-indigo-600/30 border border-indigo-400/40 text-3xl font-black text-white">
+                          {participant.avatarEmoji || participant.name.charAt(0).toUpperCase()}
+                        </div>
+                        <p className="mt-3 text-base font-black text-white">
+                          {participant.name}
+                        </p>
+                        <p className="text-xs text-slate-400">@{participant.username}</p>
+                        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-0.5 text-[10px] text-slate-300">
+                          Kamera o'chiq
+                        </span>
+                      </div>
+                    )}
 
                   {/* Top Badges */}
                   <div className="absolute top-3 left-3 flex items-center gap-1.5">
@@ -865,7 +934,8 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+            })}
           </div>
 
           {/* Bottom Reaction & Host Toolbar */}
@@ -883,8 +953,17 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
               ))}
             </div>
 
-            {isAdminOrHost && (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsRecordingModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 px-3.5 py-2 text-xs font-black text-white shadow-lg shadow-rose-600/30 cursor-pointer transition-all active:scale-95"
+              >
+                <Radio className="w-3.5 h-3.5 animate-pulse" />
+                <span>🔴 Yozib Olish & Saqlash</span>
+              </button>
+
+              {isAdminOrHost && (
                 <button
                   onClick={() => handleHostAction('mute_all')}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-3 py-2 text-xs font-bold text-amber-200 cursor-pointer"
@@ -892,8 +971,8 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
                   <VolumeX className="w-3.5 h-3.5" />
                   Barchani ovozsiz qilish
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -1028,6 +1107,100 @@ export const MajlisView: React.FC<MajlisViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Recording & Session Archive Modal */}
+      {isRecordingModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="max-w-xl w-full rounded-3xl bg-slate-900 border border-white/15 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <Radio className="w-5 h-5 text-rose-500 animate-pulse" />
+                <span>🎥 Video Majlisni Yozib Olish & Saqlash</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsRecordingModalOpen(false)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {saveSuccessMsg && (
+              <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+                {saveSuccessMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveRecording} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Majlis Nomi</label>
+                <input
+                  type="text"
+                  value={recordingTitle}
+                  onChange={(e) => setRecordingTitle(e.target.value)}
+                  placeholder={room?.title || 'CHSB & Olimpiada Video Majlisi'}
+                  className="w-full rounded-xl bg-slate-950 border border-white/15 px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Majlis Tafsilotlari & Qaydlar
+                </label>
+                <textarea
+                  rows={3}
+                  value={recordingNotes}
+                  onChange={(e) => setRecordingNotes(e.target.value)}
+                  placeholder="Muhokama qilingan masalalar, topshiriqlar va video xulosasi..."
+                  className="w-full rounded-xl bg-slate-950 border border-white/15 px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-400 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-[11px] text-slate-400">
+                  Majlisda hozirda: <strong>{participants.length}</strong> ishtirokchi
+                </span>
+                <button
+                  type="submit"
+                  disabled={isSavingRecording}
+                  className="py-2.5 px-5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-600/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSavingRecording ? 'Saqlanmoqda...' : 'Yozuvni Saqlash'}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Previously Saved Recordings */}
+            {recordingsList.length > 0 && (
+              <div className="pt-3 border-t border-white/10 space-y-2">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                  Oldingi Saqlangan Majlislar ({recordingsList.length})
+                </h4>
+                <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+                  {recordingsList.map((rec) => (
+                    <div
+                      key={rec.id}
+                      className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div>
+                        <div className="font-bold text-white truncate max-w-xs">{rec.title}</div>
+                        <div className="text-[10px] text-slate-400">
+                          {rec.durationMinutes} daqiqa • {rec.participantsCount} kishi • {rec.hostName}
+                        </div>
+                      </div>
+                      <span className="shrink-0 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                        Saqlangan
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

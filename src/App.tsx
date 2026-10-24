@@ -29,6 +29,13 @@ import { InteractiveTutorialModal } from './components/InteractiveTutorialModal'
 import { PremiumModal } from './components/PremiumModal';
 import { KiteshotGameView } from './components/KiteshotGameView';
 import {
+  GiantImageShowcaseModal,
+  ShowcaseImageItem,
+} from './components/GiantImageShowcaseModal';
+import { KitestAIGeminiAssistant } from './components/KitestAIGeminiAssistant';
+import { StoreShopView } from './components/StoreShopView';
+import { KitestGramView } from './components/KitestGramView';
+import {
   StudyPlansView,
   AlgorithmsView,
   RoadmapView,
@@ -119,6 +126,8 @@ import {
   PlaySquare,
   Star,
   Gamepad2,
+  Image as ImageIcon,
+  ShoppingBag,
 } from 'lucide-react';
 
 const AUTH_STORAGE_KEY = 'kitest_clean_user_v3';
@@ -322,6 +331,29 @@ export default function App() {
   const [isLuckyWheelOpen, setIsLuckyWheelOpen] = useState(false);
   const [activeCertificate, setActiveCertificate] =
     useState<CertificateData | null>(null);
+  const [isImageShowcaseOpen, setIsImageShowcaseOpen] = useState(false);
+  const [showcaseTargetImage, setShowcaseTargetImage] =
+    useState<ShowcaseImageItem | null>(null);
+  const [showcaseTargetUrl, setShowcaseTargetUrl] = useState<string | undefined>(
+    undefined
+  );
+
+  const handleOpenImageShowcase = useCallback(
+    (target?: ShowcaseImageItem | string) => {
+      if (typeof target === 'string') {
+        setShowcaseTargetUrl(target);
+        setShowcaseTargetImage(null);
+      } else if (target && typeof target === 'object') {
+        setShowcaseTargetImage(target);
+        setShowcaseTargetUrl(undefined);
+      } else {
+        setShowcaseTargetImage(null);
+        setShowcaseTargetUrl(undefined);
+      }
+      setIsImageShowcaseOpen(true);
+    },
+    []
+  );
 
   const fetchPlatformState = useCallback(async () => {
     try {
@@ -838,6 +870,7 @@ export default function App() {
         <div className="relative z-10 min-h-screen flex flex-col">
           <KitestSkyLandingView
             currentUser={currentUser}
+            isAdminUnlocked={isAdminUnlocked}
             tests={tests}
             users={users}
             onOpenAuth={(mode) => {
@@ -1224,6 +1257,25 @@ export default function App() {
                     </span>
                   </button>
 
+                  {/* 🛍️ DO'KON & BOZOR (Ballar evaziga barcha tovarlar) */}
+                  <button
+                    type="button"
+                    onClick={() => navigateTab('shop')}
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-black flex items-center justify-between transition-all cursor-pointer ${
+                      currentTab === 'shop' && !selectedTest
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-400'
+                        : 'text-emerald-300 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4 text-emerald-400" />
+                      <span>🛍️ Do'kon & Bozor</span>
+                    </span>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200">
+                      YANGI 🎁
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => navigateTab('contests')}
@@ -1432,18 +1484,58 @@ export default function App() {
                     </span>
                   </button>
 
+                  {/* Dedicated KitestAI Pro (Ultra-tezkor neyrotizim) */}
+                  <button
+                    type="button"
+                    onClick={() => navigateTab('gemini_ai')}
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                      currentTab === 'gemini_ai' && !selectedTest
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30'
+                        : 'text-indigo-300 hover:bg-indigo-500/15'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>🤖 KitestAI Pro</span>
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/30 text-[9px] font-black text-indigo-200">
+                      PRO AI
+                    </span>
+                  </button>
+
+                  {/* Dedicated AI Savol va Test Tuzish */}
                   <button
                     type="button"
                     onClick={() => navigateTab('create_test')}
                     className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                       currentTab === 'create_test' && !selectedTest
                         ? 'bg-purple-600 text-white'
-                        : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+                        : 'text-purple-300 hover:bg-purple-500/15'
                     }`}
                   >
                     <span className="flex items-center gap-2.5">
-                      <Sparkles className="w-4 h-4 text-purple-400" />
-                      <span>🧠 Sun'iy Intellekt (AI)</span>
+                      <HelpCircle className="w-4 h-4 text-purple-400" />
+                      <span>✨ KitestAI: Test Tuzuvchi</span>
+                    </span>
+                  </button>
+
+                  {/* Dedicated KitestGram (xuddi Telegram dek) */}
+                  <button
+                    type="button"
+                    onClick={() => navigateTab('kitestgram')}
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-extrabold flex items-center justify-between transition-all cursor-pointer ${
+                      (currentTab === 'kitestgram' || currentTab === 'chat') && !selectedTest
+                        ? 'bg-[#2AABEE] text-white shadow-lg shadow-sky-500/30'
+                        : 'text-sky-300 hover:bg-sky-500/15'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Send className="w-4 h-4 text-[#2AABEE] -rotate-12 translate-x-0.5" />
+                      <span>✈️ KitestGram (Onlayn)</span>
+                    </span>
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
                   </button>
 
@@ -1475,6 +1567,15 @@ export default function App() {
                   >
                     <Settings className="w-4 h-4 text-sky-400" />
                     <span>⚙️ Nastroyka (Dizayn)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenImageShowcase()}
+                    className="sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-bold text-amber-300 hover:bg-amber-500/15 flex items-center gap-2.5 transition-all cursor-pointer"
+                  >
+                    <ImageIcon className="w-4 h-4 text-amber-400" />
+                    <span>🖼️ Katta Rasmlar (Ultra HD)</span>
                   </button>
 
                   <button
@@ -1632,6 +1733,7 @@ export default function App() {
                         onOpenCertificatesStore={() => setIsCertificatesStoreOpen(true)}
                         onOpenLuckyWheel={() => setIsLuckyWheelOpen(true)}
                         onOpenProfile={() => setIsProfileOpen(true)}
+                        onOpenImageShowcase={handleOpenImageShowcase}
                         onUpdateUser={(updated) => {
                           setCurrentUser(updated);
                           localStorage.setItem(
@@ -1844,18 +1946,18 @@ export default function App() {
                         }}
                         onRefreshState={fetchPlatformState}
                       />
-                    ) : currentTab === 'chat' ? (
-                      <OnlineChatView
+                    ) : currentTab === 'gemini_ai' ? (
+                      <KitestAIGeminiAssistant
                         currentUser={currentUser}
-                        isAdminUnlocked={isAdminUnlocked}
-                        adminPasscode={adminPasscode}
-                        users={users}
-                        tests={tests}
-                        initialMessages={messages}
-                        initialChatGroups={chatGroups}
-                        initialOnlineUsers={onlineUsers}
                         soundEnabled={soundEnabled}
-                        onSelectTest={handleSelectTest}
+                        onNavigateToTestMaker={() => navigateTab('create_test')}
+                        onNavigateToGram={() => navigateTab('kitestgram')}
+                      />
+                    ) : currentTab === 'kitestgram' || currentTab === 'chat' ? (
+                      <KitestGramView
+                        currentUser={currentUser}
+                        users={users}
+                        soundEnabled={soundEnabled}
                         onRequireLogin={() => openDedicatedAuthPage('login')}
                         onOpenMajlis={() => navigateTab('majlis')}
                       />
@@ -1943,6 +2045,18 @@ export default function App() {
                         }}
                         onRequireLogin={() => openDedicatedAuthPage('login')}
                         onOpenPremium={() => setIsPremiumModalOpen(true)}
+                      />
+                    ) : currentTab === 'shop' ? (
+                      <StoreShopView
+                        currentUser={currentUser}
+                        soundEnabled={soundEnabled}
+                        onUpdateUser={(updated) => {
+                          setCurrentUser(updated);
+                          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated));
+                        }}
+                        onRequireLogin={() => openDedicatedAuthPage('login')}
+                        onOpenLuckyWheel={() => setIsLuckyWheelOpen(true)}
+                        onNavigateTab={(tab) => navigateTab(tab)}
                       />
                     ) : null}
                 </motion.div>
@@ -2222,6 +2336,17 @@ export default function App() {
         onOpenLuckyWheel={() => {
           setIsPremiumModalOpen(false);
           setIsLuckyWheelOpen(true);
+        }}
+      />
+
+      <GiantImageShowcaseModal
+        isOpen={isImageShowcaseOpen}
+        initialImage={showcaseTargetImage}
+        initialImageUrl={showcaseTargetUrl}
+        onClose={() => {
+          setIsImageShowcaseOpen(false);
+          setShowcaseTargetImage(null);
+          setShowcaseTargetUrl(undefined);
         }}
       />
 

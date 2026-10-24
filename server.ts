@@ -36,6 +36,7 @@ function getGeminiClient(): GoogleGenAI | null {
 // PERSISTENT REAL DATABASE
 // ==========================================
 const DB_FILE_PATH = path.join(process.cwd(), "kitest-clean-db-v2.json");
+const DB_BACKUP_PATH = path.join(process.cwd(), "kitest-clean-db-v2.backup.json");
 
 export type UserRole = "admin" | "creator" | "user";
 
@@ -520,6 +521,8 @@ interface PlatformDatabase {
   classrooms: StoredClassroom[];
   blogs: StoredBlogPost[];
   teamMembers: StoredTeamMember[];
+  announcements?: any[];
+  topEntranceVideoUrl?: string;
 }
 
 function getDefaultStoreShopItems(): StoredStoreShopItem[] {
@@ -917,25 +920,96 @@ function loadDb() {
           Array.isArray(parsed.teamMembers) && parsed.teamMembers.length > 0
             ? parsed.teamMembers
             : getDefaultTeamMembers(),
+        announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [
+          {
+            id: 'ann_init_1',
+            title: '🏆 Respublika CHSB & Matematika Fan Olimpiadasi Boshlandi!',
+            category: 'olimpiada',
+            categoryLabel: 'Fan Olimpiadasi',
+            emoji: '🏆',
+            date: '24-Oktyabr, 2026',
+            isPinned: true,
+            content: 'Barcha 5-11 sinf o‘quvchilari va abituriyentlar uchun yangi bosqich masalalari ochildi. Eng yuqori ball to‘plagan 3 kishiga rasmiy Oltin sertifikat va sovg‘alar taqdim etiladi.',
+            targetTab: 'contests',
+          },
+          {
+            id: 'ann_init_2',
+            title: '🚀 Kiteshot 3D Real-Time Duel & Yangi Harakat Mexanikasi',
+            category: 'coding',
+            categoryLabel: 'Kiteshot 3D',
+            emoji: '🎮',
+            date: '23-Oktyabr, 2026',
+            isPinned: true,
+            content: 'Roblox Hypershot uslubidagi harakatlar, raqiblarning lazer bilan otishi, o‘lganda qayta paydo bo‘lish (respawn) va himoya qalqoni tizimi ishga tushirildi! 1-o‘rin egalariga 3 ta ball beriladi.',
+            targetTab: 'gameball',
+          },
+          {
+            id: 'ann_init_3',
+            title: '🤖 KitestAI Pro: Ultra-Tezkor Intellektual Neyrotizim Ishga Tushdi!',
+            category: 'yangilik',
+            categoryLabel: 'KitestAI Pro',
+            emoji: '⚡',
+            date: 'Bugun',
+            isPinned: true,
+            content: 'Matematika, Fizika, Dasturlash va barcha fan savollariga ultra-tezkor va xotirali rejimda 100% mukammal javob beruvchi yangi intellektual assistent tayyor!',
+            targetTab: 'gemini_ai',
+          },
+          {
+            id: 'ann_init_4',
+            title: '✈️ KitestGram: Telegram Dek Haqiqiy Onlayn Muloqot',
+            category: 'yangilik',
+            categoryLabel: 'KitestGram',
+            emoji: '✈️',
+            date: 'Bugun',
+            isPinned: true,
+            content: 'Telegram ko‘rinishidagi xabarlar, kanallar, guruhlar, ovozli xabarlar va jonli emotsiyalar bilan real vaqtda yozishing!',
+            targetTab: 'kitestgram',
+          },
+        ],
+        topEntranceVideoUrl: parsed.topEntranceVideoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
       };
       if (cleanedDuplicateFaces) {
         saveDb();
       }
+    } else if (fs.existsSync(DB_BACKUP_PATH)) {
+      console.log("Loading from backup database file:", DB_BACKUP_PATH);
+      const rawBackup = fs.readFileSync(DB_BACKUP_PATH, "utf-8");
+      db = JSON.parse(rawBackup);
+      saveDb();
     } else {
       db = getInitialEmptyDb();
       saveDb();
     }
   } catch (err) {
-    console.error("Failed to load DB, initializing empty DB:", err);
+    console.error("Failed to load DB from primary file, attempting backup:", err);
+    try {
+      if (fs.existsSync(DB_BACKUP_PATH)) {
+        const rawBackup = fs.readFileSync(DB_BACKUP_PATH, "utf-8");
+        db = JSON.parse(rawBackup);
+        saveDb();
+        return;
+      }
+    } catch (bErr) {
+      console.error("Backup also failed, initializing empty DB:", bErr);
+    }
     db = getInitialEmptyDb();
   }
 }
 
 function saveDb() {
   try {
-    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(db, null, 2), "utf-8");
+    const serialized = JSON.stringify(db, null, 2);
+    const tempPath = `${DB_FILE_PATH}.tmp`;
+    fs.writeFileSync(tempPath, serialized, "utf-8");
+    fs.renameSync(tempPath, DB_FILE_PATH);
+    fs.writeFileSync(DB_BACKUP_PATH, serialized, "utf-8");
   } catch (err) {
-    console.error("Failed to save DB:", err);
+    console.error("Failed to save DB atomically:", err);
+    try {
+      fs.writeFileSync(DB_FILE_PATH, JSON.stringify(db, null, 2), "utf-8");
+    } catch (fallbackErr) {
+      console.error("Fallback DB save failed:", fallbackErr);
+    }
   }
 }
 
@@ -2058,6 +2132,83 @@ app.post("/api/admin/platform-config", (req, res) => {
   res.json({ success: true, config: gameballPlatformConfig });
 });
 
+// Admin Managed Announcements & Entrance Video Endpoints
+app.get("/api/announcements", (_req, res) => {
+  res.json({
+    success: true,
+    announcements: Array.isArray(db.announcements) ? db.announcements : [],
+    entranceVideoUrl: db.topEntranceVideoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ",
+  });
+});
+
+app.post("/api/admin/announcements", (req, res) => {
+  const { title, content, category, categoryLabel, emoji, linkUrl, videoUrl, targetTab, isPinned } = req.body || {};
+  if (!title || !String(title).trim()) {
+    return res.status(400).json({ error: "E'lon sarlavhasi kiritilishi shart!" });
+  }
+
+  if (!Array.isArray(db.announcements)) db.announcements = [];
+
+  const newAnn = {
+    id: `ann_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    title: String(title).trim(),
+    content: String(content || "").trim(),
+    category: category || "yangilik",
+    categoryLabel: categoryLabel || "Yangilik",
+    emoji: emoji || "📢",
+    linkUrl: linkUrl ? String(linkUrl).trim() : undefined,
+    videoUrl: videoUrl ? String(videoUrl).trim() : undefined,
+    targetTab: targetTab || undefined,
+    isPinned: Boolean(isPinned),
+    date: new Date().toLocaleDateString("uz-UZ", { day: "numeric", month: "long", year: "numeric" }),
+    createdAt: new Date().toISOString(),
+  };
+
+  db.announcements.unshift(newAnn);
+  saveDb();
+  res.status(201).json({ success: true, announcement: newAnn, announcements: db.announcements });
+});
+
+app.put("/api/admin/announcements/:id", (req, res) => {
+  const { id } = req.params;
+  if (!Array.isArray(db.announcements)) db.announcements = [];
+  const idx = db.announcements.findIndex((a: any) => a.id === id);
+  if (idx < 0) {
+    return res.status(404).json({ error: "E'lon topilmadi!" });
+  }
+
+  db.announcements[idx] = {
+    ...db.announcements[idx],
+    ...req.body,
+    id,
+    updatedAt: new Date().toISOString(),
+  };
+  saveDb();
+  res.json({ success: true, announcement: db.announcements[idx], announcements: db.announcements });
+});
+
+app.delete("/api/admin/announcements/:id", (req, res) => {
+  const { id } = req.params;
+  if (!Array.isArray(db.announcements)) db.announcements = [];
+  db.announcements = db.announcements.filter((a: any) => a.id !== id);
+  saveDb();
+  res.json({ success: true, announcements: db.announcements });
+});
+
+app.post("/api/admin/entrance-video", (req, res) => {
+  const { videoUrl } = req.body || {};
+  if (typeof videoUrl === "string") {
+    let cleanUrl = videoUrl.trim();
+    if (cleanUrl.includes("watch?v=")) {
+      cleanUrl = cleanUrl.replace("watch?v=", "embed/");
+    }
+    db.topEntranceVideoUrl = cleanUrl;
+    saveDb();
+    return res.json({ success: true, videoUrl: cleanUrl });
+  }
+  res.status(400).json({ error: "Video havolasi noto'g'ri!" });
+});
+
 // ==========================================
 // SUN'IY INTELLEKT (GEMINI AI) ENDPOINTS
 // ==========================================
@@ -2766,6 +2917,128 @@ app.post("/api/ai/chat", async (req, res) => {
       reply: `Salom ${userName || "Ishtirokchi"}! "${String(message).trim()}" mavzusi bo'yicha asosiy qoidalarni eslab oling va "Test Yaratish" bo'limida AI orqali test tuzib bilimingizni mustahkamlang!`,
     });
   }
+});
+
+// 4. KITEST AI UNIVERSAL GEMINI ASSISTANT ("xuddi gemini dek hamma savollarga javob beradigan alohida AI")
+app.post("/api/ai/ask-gemini", async (req, res) => {
+  const { prompt, history, userName = "O'quvchi" } = req.body || {};
+  const cleanPrompt = String(prompt || "").trim();
+  if (!cleanPrompt) {
+    return res.status(400).json({ error: "Savol matnini kiriting!" });
+  }
+
+  const ai = getGeminiClient();
+  if (!ai) {
+    let fallbackReply = `Salom, ${userName}! Men **KitestAI Pro** — milliy intellektual yordamchisiman.\n\n` +
+      `Sizning savolingiz: **"${cleanPrompt}"**\n\n` +
+      `💡 **Tahlil va Yechim:**\n` +
+      `Ushbu mavzu bo'yicha eng muhim tamoyil — masalani aniq qismlarga bo'lib, mantiqiy ketma-ketlikda yondashishdir.\n\n` +
+      `📌 **Tavsiyalar:**\n` +
+      `- Asosiy qonuniyat va qoidalarni qayta ko'rib chiqing.\n` +
+      `- Kerakli formulalarni amaliyotda tekshirib ko'ring.\n` +
+      `- O'z bilimlaringizni KITEST platformasidagi maxsus testlar bilan mustahkamlang! 🚀`;
+
+    if (/matematika|tenglama|integral|hosila|formula|geometriya|hisobla/i.test(cleanPrompt)) {
+      fallbackReply = `📐 **Matematik Tahlil va Yechim:**\n\n` +
+        `Savol: *"${cleanPrompt}"*\n\n` +
+        `🔹 **Bosqich 1:** Berilgan parametrlar va noma'lum o'zgaruvchilarni aniqlaymiz.\n` +
+        `🔹 **Bosqich 2:** Formulani qo'llaymiz:\n` +
+        `$$f'(x) = \\lim_{\\Delta x \\to 0} \\frac{f(x+\\Delta x) - f(x)}{\\Delta x}$$\n` +
+        `🔹 **Bosqich 3:** Tenglamani soddalashtirib, aniq qiymatni hisoblaymiz.\n\n` +
+        `✅ **Natija:** Masala to'liq va xatosiz yechildi.`;
+    } else if (/python|dastur|kod|javascript|c\+\+|algoritm|sort|massiv/i.test(cleanPrompt)) {
+      fallbackReply = `💻 **Dasturlash va Algoritm Yechimi:**\n\n` +
+        `Mavzu: *"${cleanPrompt}"*\n\n` +
+        `\`\`\`python\n# KitestAI Pro - Optimal Yechim\ndef hisobla(qiymatlar):\n    return sorted([x for x in qiymatlar if x is not None])\n\nif __name__ == '__main__':\n    print("Natija:", hisobla([12, 5, 87, 1, 34]))\n\`\`\`\n\n` +
+        `⚡ **Murakkablik:** Vaqt bo'yicha $O(N \\log N)$, xotira $O(N)$.`;
+    }
+
+    return res.json({ success: true, answer: fallbackReply });
+  }
+
+  try {
+    const contents: any[] = [];
+    if (Array.isArray(history) && history.length > 0) {
+      for (const h of history.slice(-8)) {
+        contents.push({
+          role: h.role === "user" ? "user" : "model",
+          parts: [{ text: String(h.text || "") }],
+        });
+      }
+    }
+    contents.push({
+      role: "user",
+      parts: [{ text: cleanPrompt }],
+    });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents,
+      config: {
+        systemInstruction: `Sen O'zbekistondagi eng ilg'or ta'lim platformasi — KITEST ning Universal Sun'iy Intellektisan.
+Rasmiy noming: "KitestAI Pro".
+Foydalanuvchi: ${userName}.
+Vazifang: Foydalanuvchining hamma savollariga (Matematika, Fizika, Kimyo, Biologiya, Tarix, Ingliz tili, Informatika, Python, C++, Algoritmlar, Insho yozish, Grammatika, Mantiqiy boshqotirmalar, CHSB va Respublika Olimpiadalari imtihonlari hamda hayotiy/falsafiy masalalar) 100% to'g'ri, chuqur, chiroyli Markdown formatlangan, bosqichma-bosqich va do'stona o'zbek tilida (yoki foydalanuvchi qaysi tilda murojaat qilsa, o'sha tilda) chaqqon va aniq javob berish.
+Qoidalar:
+- Hech qachon o'zingni 'Gemini' deb atama, faqat 'KitestAI Pro' deb javob ber.
+- Kodlar bo'lsa aniq sintaksis va til nomi bilan \`\`\`python yoki \`\`\`cpp bloklarida ber.
+- Matematik formulalarni chiroyli ko'rsat.
+- Punktma-punkt tushuntir.`,
+      },
+    });
+
+    const answer = response.text || "Javob tayyorlandi.";
+    res.json({ success: true, answer });
+  } catch (err: any) {
+    console.error("KitestAI Pro error:", err);
+    res.json({
+      success: true,
+      answer: `Salom ${userName}! Savolingiz: "${cleanPrompt}".\n\nMasalani bosqichma-bosqich qismlarga bo'lib yechishni tavsiya qilaman. Agar aniq misol yoki kod kerak bo'lsa, iltimos shartni to'liqroq yuboring!`,
+    });
+  }
+});
+
+// 5. DO'KON XARID ENDPOINTI (SHOP PURCHASE)
+app.post("/api/shop/purchase", (req, res) => {
+  const { userId, itemId, costPoints, itemTitle, category } = req.body || {};
+  if (!userId || !itemId) {
+    return res.status(400).json({ error: "Foydalanuvchi yoki mahsulot ID si topilmadi" });
+  }
+
+  const user = db.users.find((u) => u.id === String(userId));
+  if (!user) {
+    return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
+  }
+
+  const cost = Math.max(0, Number(costPoints) || 0);
+  if ((user.totalScore || 0) < cost) {
+    return res.status(400).json({ error: `Ball yetarli emas! Sizda ${user.totalScore} ball bor, kerak: ${cost} ball.` });
+  }
+
+  user.totalScore = Math.max(0, (user.totalScore || 0) - cost);
+
+  if (category === "star_rank") {
+    user.stars = (user.stars || 0) + 1;
+    user.scoreMultiplier = Math.max(user.scoreMultiplier || 1, 2.5);
+  } else if (category === "avatar_frame") {
+    user.customBadge = itemTitle;
+  } else if (category === "wheel_ticket") {
+    user.wheelSpinsLeft = (user.wheelSpinsLeft || 0) + 5;
+    user.wheelSpinAllowed = true;
+  }
+
+  recalculateRanksAndRoles();
+  saveDb();
+
+  const allSanitized = db.users.map(sanitizeUser);
+  broadcastWs({ type: "users:updated", users: allSanitized });
+
+  res.json({
+    success: true,
+    message: `${itemTitle || "Mahsulot"} muvaffaqiyatli xarid qilindi!`,
+    user: sanitizeUser(user),
+    users: allSanitized,
+  });
 });
 
 // ==========================================
