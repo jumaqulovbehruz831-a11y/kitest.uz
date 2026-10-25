@@ -85,6 +85,9 @@ interface AdminPanelProps {
 
 type AdminSectionTab =
   | 'ratings'
+  | 'wallet_grants'
+  | 'announcements'
+  | 'digital_game'
   | 'monitor'
   | 'certificates'
   | 'creators'
@@ -249,6 +252,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [broadcastRoom, setBroadcastRoom] = useState<string>('global');
   const [broadcastText, setBroadcastText] = useState<string>('');
   const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
+
+  // New Real Admin Tools State:
+  // 1. Platform Notification Broadcasting
+  const [notifTitle, setNotifTitle] = useState<string>('');
+  const [notifText, setNotifText] = useState<string>('');
+  const [notifIcon, setNotifIcon] = useState<string>('📢');
+  const [notifTab, setNotifTab] = useState<string>('home');
+  const [notifLinkUrl, setNotifLinkUrl] = useState<string>('');
+  const [notifStatus, setNotifStatus] = useState<string | null>(null);
+
+  // 2. Real-Time Dedicated Wallet Grant Console
+  const [grantUserId, setGrantUserId] = useState<string>('all');
+  const [grantDeltaScore, setGrantDeltaScore] = useState<number>(50);
+  const [grantDeltaCoins, setGrantDeltaCoins] = useState<number>(25);
+  const [grantDeltaStars, setGrantDeltaStars] = useState<number>(1);
+  const [grantReason, setGrantReason] = useState<string>("Faollik va rag'bat uchun");
+  const [grantStatusMsg, setGrantStatusMsg] = useState<string | null>(null);
 
   const isMainAdminAccount =
     currentUser &&
@@ -458,6 +478,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         await onRefreshData();
         setRatingStatusMsg(
           `🪙 Ishtirokchi hisobiga +${deltaCoins} Coins muvaffaqiyatli qo'shildi!`
+        );
+      }
+    } catch {}
+    setIsBusyAction(false);
+  };
+
+  const handleQuickAdjustStars = async (userId: string, deltaStars: number) => {
+    setIsBusyAction(true);
+    setRatingStatusMsg(null);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/score`, {
+        method: 'PATCH',
+        headers: adminHeaders,
+        body: JSON.stringify({
+          deltaStars,
+        }),
+      });
+      if (res.ok) {
+        await onRefreshData();
+        setRatingStatusMsg(
+          `⭐ Ishtirokchi hisobiga +${deltaStars} Yulduz muvaffaqiyatli qo'shildi!`
         );
       }
     } catch {}
@@ -879,6 +920,82 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsBusyAction(false);
   };
 
+  const handleSendPlatformNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!notifTitle.trim() || !notifText.trim()) return;
+    setIsBusyAction(true);
+    setNotifStatus(null);
+    try {
+      const res = await fetch('/api/admin/notifications', {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({
+          title: notifTitle.trim(),
+          text: notifText.trim(),
+          icon: notifIcon,
+          tab: notifTab,
+          linkUrl: notifLinkUrl.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        setNotifTitle('');
+        setNotifText('');
+        setNotifLinkUrl('');
+        setNotifStatus("✅ Rasmiy bildirishnoma barcha foydalanuvchilarga real vaqtda yetkazildi!");
+        await onRefreshData();
+      } else {
+        const d = await res.json();
+        setNotifStatus(`❌ Xatolik: ${d.error || "Yuborib bo'lmadi"}`);
+      }
+    } catch {
+      setNotifStatus("❌ Server bilan bog'lanishda xatolik yuz berdi.");
+    }
+    setIsBusyAction(false);
+  };
+
+  const handleExecuteWalletGrant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsBusyAction(true);
+    setGrantStatusMsg(null);
+    try {
+      if (grantUserId === 'all') {
+        for (const u of users) {
+          await fetch(`/api/admin/users/${u.id}/score`, {
+            method: 'PATCH',
+            headers: adminHeaders,
+            body: JSON.stringify({
+              deltaScore: grantDeltaScore,
+              deltaRating: Math.round(grantDeltaScore / 2),
+              deltaCoins: grantDeltaCoins,
+              deltaStars: grantDeltaStars,
+            }),
+          });
+        }
+        setGrantStatusMsg(`🎉 Barcha ${users.length} ta foydalanuvchiga: ${grantDeltaScore >= 0 ? `+${grantDeltaScore}` : grantDeltaScore} Ball, ${grantDeltaCoins >= 0 ? `+${grantDeltaCoins}` : grantDeltaCoins} Coins, ${grantDeltaStars >= 0 ? `+${grantDeltaStars}` : grantDeltaStars} Yulduz berildi!`);
+      } else {
+        const target = users.find((u) => u.id === grantUserId);
+        if (!target) return;
+        const res = await fetch(`/api/admin/users/${target.id}/score`, {
+          method: 'PATCH',
+          headers: adminHeaders,
+          body: JSON.stringify({
+            deltaScore: grantDeltaScore,
+            deltaRating: Math.round(grantDeltaScore / 2),
+            deltaCoins: grantDeltaCoins,
+            deltaStars: grantDeltaStars,
+          }),
+        });
+        if (res.ok) {
+          setGrantStatusMsg(`⚡ ${target.name} ga: ${grantDeltaScore >= 0 ? `+${grantDeltaScore}` : grantDeltaScore} Ball, ${grantDeltaCoins >= 0 ? `+${grantDeltaCoins}` : grantDeltaCoins} Coins, ${grantDeltaStars >= 0 ? `+${grantDeltaStars}` : grantDeltaStars} Yulduz o'tkazildi! Izoh: ${grantReason}`);
+        }
+      }
+      await onRefreshData();
+    } catch {
+      setGrantStatusMsg("❌ Ball o'tkazishda xatolik yuz berdi.");
+    }
+    setIsBusyAction(false);
+  };
+
   const handleIssueCustomCertificate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!onOpenCertificate) return;
@@ -1259,6 +1376,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         >
           <Zap className="w-4 h-4" />
           <span>⚡ Reyting va Ball Boshqaruvi</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('wallet_grants')}
+          className={`py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+            activeSection === 'wallet_grants'
+              ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-lg shadow-amber-500/30 ring-1 ring-amber-300'
+              : 'bg-slate-900 text-amber-300 hover:text-white border border-amber-500/30'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-400" />
+          <span>⚡ Real-Vaqt Ball, Coins & Yulduz Taqsimoti</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('announcements')}
+          className={`py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+            activeSection === 'announcements'
+              ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-lg shadow-sky-500/30 ring-1 ring-sky-300'
+              : 'bg-slate-900 text-sky-300 hover:text-white border border-sky-500/30'
+          }`}
+        >
+          <Megaphone className="w-4 h-4 text-sky-400" />
+          <span>📢 E'lonlar & Bildirishnomalar</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('digital_game')}
+          className={`py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+            activeSection === 'digital_game'
+              ? 'bg-gradient-to-r from-orange-500 to-rose-600 text-white shadow-lg shadow-orange-500/30 ring-1 ring-orange-300'
+              : 'bg-slate-900 text-orange-300 hover:text-white border border-orange-500/30'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4 text-orange-400" />
+          <span>🧑‍🏫 Raqamli Ustoz Nazorati</span>
         </button>
 
         <button
@@ -1668,6 +1821,540 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SECTION: REAL-VAQT BALL, COINS VA YULDUZ TAQSIMOTI                    */}
+      {/* ===================================================================== */}
+      {activeSection === 'wallet_grants' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-yellow-950/40 border-2 border-amber-500/50 space-y-4 shadow-xl">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black uppercase tracking-wider mb-1">
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Real-Vaqt Valyuta Markazi</span>
+                </div>
+                <h2 className="text-xl font-extrabold text-white">
+                  ⚡ Ball, 🪙 Oltin Tanga (Coins) va ⭐ Yulduz Taqsimoti
+                </h2>
+                <p className="text-xs text-slate-300 mt-1">
+                  Istalgan ishtirokchiga yoki barcha a'zolarga bir zumda Ball, Tanga va Yulduzlarni o'tkazish, mukofotlash yoki jazo qo'llash markazi.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGrantDeltaScore(100);
+                    setGrantDeltaCoins(50);
+                    setGrantDeltaStars(2);
+                    setGrantReason("🎁 Bosh Admin Umumiy Sovg'asi!");
+                  }}
+                  className="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-md cursor-pointer hover:opacity-95"
+                >
+                  ⚡ Katta Paket (+100 Ball, +50 Coins, +2 ⭐)
+                </button>
+              </div>
+            </div>
+
+            {grantStatusMsg && (
+              <div className="p-3.5 rounded-xl bg-emerald-950/70 border border-emerald-500/50 text-xs font-bold text-emerald-200 flex items-center justify-between">
+                <span>{grantStatusMsg}</span>
+                <button
+                  type="button"
+                  onClick={() => setGrantStatusMsg(null)}
+                  className="text-emerald-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <form onSubmit={handleExecuteWalletGrant} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    👤 Qabul qiluvchi ishtirokchi *
+                  </label>
+                  <select
+                    value={grantUserId}
+                    onChange={(e) => setGrantUserId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="all">🌟 BARCHA FOYDALANUVCHILARGA ({users.length} ta)</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} (@{u.username}) — ⚡ {u.totalScore}b · 🪙 {u.coins || 0}c · ⭐ {u.stars || 0}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-amber-300 mb-1.5 flex items-center justify-between">
+                    <span>⚡ Ball Miqdori</span>
+                    <span className="text-[10px] text-slate-400">(Manfiy - jazo)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={grantDeltaScore}
+                    onChange={(e) => setGrantDeltaScore(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-amber-500/40 text-sm font-mono font-bold text-amber-300 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-yellow-300 mb-1.5">
+                    🪙 Oltin Tanga (+Coins)
+                  </label>
+                  <input
+                    type="number"
+                    value={grantDeltaCoins}
+                    onChange={(e) => setGrantDeltaCoins(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-yellow-500/40 text-sm font-mono font-bold text-yellow-300 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-sky-300 mb-1.5">
+                    ⭐ Yulduz (+Stars)
+                  </label>
+                  <input
+                    type="number"
+                    value={grantDeltaStars}
+                    onChange={(e) => setGrantDeltaStars(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-sky-500/40 text-sm font-mono font-bold text-sky-300 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Instant 1-Click Preset Buttons */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-2">
+                  ⚡ Tezkor Bir-Tugmali Miqdor Shabloni:
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setGrantDeltaScore(50); setGrantDeltaCoins(20); setGrantDeltaStars(0); }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-amber-500/30 text-amber-300 text-xs font-bold cursor-pointer"
+                  >
+                    +50 Ball ⚡
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setGrantDeltaScore(100); setGrantDeltaCoins(50); setGrantDeltaStars(1); }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-amber-500/30 text-amber-300 text-xs font-bold cursor-pointer"
+                  >
+                    +100 Ball & +1 ⭐
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setGrantDeltaScore(500); setGrantDeltaCoins(200); setGrantDeltaStars(5); }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-yellow-500/30 text-yellow-300 text-xs font-bold cursor-pointer"
+                  >
+                    +500 Ball & +5 ⭐ (Olimpiada G'olibi)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setGrantDeltaScore(0); setGrantDeltaCoins(100); setGrantDeltaStars(0); }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-yellow-500/30 text-yellow-300 text-xs font-bold cursor-pointer"
+                  >
+                    +100 Coins 🪙
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setGrantDeltaScore(0); setGrantDeltaCoins(0); setGrantDeltaStars(3); }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-sky-500/30 text-sky-300 text-xs font-bold cursor-pointer"
+                  >
+                    +3 Yulduz ⭐
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setGrantDeltaScore(-50); setGrantDeltaCoins(0); setGrantDeltaStars(0); setGrantReason("Qoida buzilishi uchun jarima"); }}
+                    className="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-xs font-bold cursor-pointer"
+                  >
+                    -50 Ball (Jarima) ⚠️
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  📝 Taqdim etish sababi / Izoh
+                </label>
+                <input
+                  type="text"
+                  value={grantReason}
+                  onChange={(e) => setGrantReason(e.target.value)}
+                  placeholder="Masalan: Raqamli Ustoz musobaqasida 1-o'rin olgani uchun"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isBusyAction}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg shadow-amber-500/30 cursor-pointer disabled:opacity-50"
+                >
+                  <Zap className="w-4 h-4 fill-slate-950" />
+                  <span>
+                    {isBusyAction ? "Yuborilmoqda..." : "⚡ Real-Vaqt Taqdimotini Amalga Oshirish"}
+                  </span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Quick Balance Inspection Table */}
+          <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+            <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+              <span>👥 Ishtirokchilarning Haqiqiy Balanslari ({users.length})</span>
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950 text-[11px] font-mono uppercase tracking-wider text-slate-400">
+                    <th className="py-2.5 px-3">Ishtirokchi</th>
+                    <th className="py-2.5 px-3">Ball ⚡</th>
+                    <th className="py-2.5 px-3">Coins 🪙</th>
+                    <th className="py-2.5 px-3">Yulduz ⭐</th>
+                    <th className="py-2.5 px-3">Ko'paytirgich</th>
+                    <th className="py-2.5 px-3 text-right">Tezkor +Ball</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-xs">
+                  {users.slice(0, 15).map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-800/40">
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-white flex items-center gap-1.5">
+                          <span>{u.name}</span>
+                          <span className="text-[10px] font-mono text-slate-400">@{u.username}</span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-amber-300">
+                        ⚡ {u.totalScore}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-yellow-300">
+                        🪙 {u.coins || 0}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-sky-300">
+                        ⭐ {u.stars || 0}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-purple-300">
+                        {u.scoreMultiplier || 1}x
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleQuickAdjustScore(u.id, 50)}
+                            className="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/30 text-[10px] font-bold text-amber-200 cursor-pointer"
+                          >
+                            +50 ⚡
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickAdjustCoins(u.id, 25)}
+                            className="px-2 py-1 rounded bg-yellow-500/20 hover:bg-yellow-500/35 border border-yellow-500/30 text-[10px] font-bold text-yellow-200 cursor-pointer"
+                          >
+                            +25 🪙
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickAdjustStars(u.id, 1)}
+                            className="px-2 py-1 rounded bg-sky-500/20 hover:bg-sky-500/35 border border-sky-500/30 text-[10px] font-bold text-sky-200 cursor-pointer"
+                          >
+                            +1 ⭐
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SECTION: RASMIY BILDIRISHNOMALAR VA E'LONLAR MARKAZI                   */}
+      {/* ===================================================================== */}
+      {activeSection === 'announcements' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-7 space-y-4">
+              <form
+                onSubmit={handleSendPlatformNotification}
+                className="p-6 rounded-2xl bg-gradient-to-b from-sky-950/40 to-slate-900 border-2 border-sky-500/50 space-y-4 shadow-xl"
+              >
+                <div className="flex items-center gap-2.5 border-b border-slate-800 pb-3">
+                  <Megaphone className="w-5 h-5 text-sky-400" />
+                  <div>
+                    <h2 className="text-base font-extrabold text-white">
+                      📢 Barcha Foydalanuvchilarga Haqiqiy Bildirishnoma Yuborish
+                    </h2>
+                    <p className="text-xs text-slate-300">
+                      Ushbu bildirishnoma sayt tepasidagi qo'ng'iroqchada barcha a'zolarga qizil nuqta bilan ko'rinadi va saqlanadi.
+                    </p>
+                  </div>
+                </div>
+
+                {notifStatus && (
+                  <div className="p-3 rounded-xl bg-slate-950 border border-sky-500/40 text-xs font-bold text-sky-200">
+                    {notifStatus}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-200 mb-1.5">
+                    Sarlavha *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={notifTitle}
+                    onChange={(e) => setNotifTitle(e.target.value)}
+                    placeholder="🏆 Respublika CHSB Olimpiadasi #5 Ochildi!"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-sky-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-200 mb-1.5">
+                    Bildirishnoma Matni *
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={notifText}
+                    onChange={(e) => setNotifText(e.target.value)}
+                    placeholder="Barcha 5-11 sinf o'quvchilari uchun yangi masalalar bosqichi yuklandi. Eng yuqori ball to'plaganlar Oltin sertifikat bilan taqdirlanadi!"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-sky-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                      Belgi (Emoji)
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['📢', '🏆', '🛍️', '🧑‍🏫', '⚡', '⭐', '🚀', '🎁'].map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => setNotifIcon(emoji)}
+                          className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center border cursor-pointer ${
+                            notifIcon === emoji
+                              ? 'bg-sky-500/25 border-sky-400 ring-2 ring-sky-400'
+                              : 'bg-slate-950 border-slate-800 hover:bg-slate-800'
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                      O'tish bo'limi (Tab)
+                    </label>
+                    <select
+                      value={notifTab}
+                      onChange={(e) => setNotifTab(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none"
+                    >
+                      <option value="home">Bosh sahifa</option>
+                      <option value="contests">Olimpiadalar</option>
+                      <option value="shop">Do'kon & Bozor</option>
+                      <option value="raqamli_ustoz">Raqamli Ustoz (O'yin)</option>
+                      <option value="kitestgram">KitestGram (Chat)</option>
+                      <option value="gameball">Kiteshot 3D</option>
+                      <option value="courses">Video Kurslar</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    Tashqi havola (ixtiyoriy YouTube yoki kanal)
+                  </label>
+                  <input
+                    type="url"
+                    value={notifLinkUrl}
+                    onChange={(e) => setNotifLinkUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/@FC_UZB-67b"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={isBusyAction}
+                    className="px-6 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-sky-600/25 cursor-pointer disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Haqiqiy Bildirishnomani Tarqatish</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Notification Live Card Preview */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
+                  👁️ Foydalanuvchi Ekranida Ko'rinishi (Preview):
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-950 border border-sky-500/40 space-y-2">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{notifIcon || '📢'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-extrabold text-white flex items-center gap-2">
+                        <span>{notifTitle || "Sarlavha bu yerda ko'rinadi"}</span>
+                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block animate-ping"></span>
+                      </div>
+                      <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                        {notifText || "Bildirishnoma tavsifi matni bu yerda aks ettiriladi."}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/30">
+                          Bo'lim: {notifTab}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">Hozirgina</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 space-y-1">
+                  <div className="font-bold text-slate-300">ℹ️ Qanday ishlaydi:</div>
+                  <p>1. Bildirishnoma bazaga doimiy saqlanadi (hech qachon o'chib ketmaydi).</p>
+                  <p>2. Har bir foydalanuvchining shaxsiy "O'qilgan" holati qayd qilinadi.</p>
+                  <p>3. WebSocket orqali onlayn turgan foydalanuvchilarga bir zumda yetkaziladi.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SECTION: RAQAMLI USTOZ & KOD O'YINI NAZORATI                           */}
+      {/* ===================================================================== */}
+      {activeSection === 'digital_game' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-orange-950/40 via-slate-900 to-amber-950/40 border-2 border-orange-500/50 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-orange-300 text-xs font-black uppercase tracking-wider mb-1">
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>Google Ilhomlantirgan Raqamli Ta'lim</span>
+                </div>
+                <h2 className="text-xl font-extrabold text-white">
+                  🧑‍🏫 Raqamli Ustoz — Interaktiv Kod va Vazifalar Nazorati
+                </h2>
+                <p className="text-xs text-slate-300 mt-1">
+                  5 ta interaktiv mentor bosqichi, Python kod poligonlari, savollar va ball mukofotlarini monitoring qilish.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
+                  🟢 5 ta Bosqich Faol
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-slate-950 border border-orange-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-orange-400 font-extrabold text-sm">
+                  <span>🧑‍🏫 1. Azizbek Ustoz</span>
+                  <span className="text-[10px] bg-orange-500/20 px-2 py-0.5 rounded text-orange-200">Algoritm</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  O'zgaruvchilar, arifmetik ifodalar va xotira boshqaruvi.
+                </p>
+                <div className="text-xs font-mono text-amber-300">
+                  🎁 Mukofot: +25 Ball · +15 Coins · +1 ⭐
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-sky-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-sky-400 font-extrabold text-sm">
+                  <span>👩‍💻 2. Malika Ustoz</span>
+                  <span className="text-[10px] bg-sky-500/20 px-2 py-0.5 rounded text-sky-200">Python</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Shart operatorlari (if/else), boolean mantiq va tarmoqlanish.
+                </p>
+                <div className="text-xs font-mono text-amber-300">
+                  🎁 Mukofot: +30 Ball · +20 Coins · +1 ⭐
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-purple-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-purple-400 font-extrabold text-sm">
+                  <span>🤖 3. KitestAI Pro</span>
+                  <span className="text-[10px] bg-purple-500/20 px-2 py-0.5 rounded text-purple-200">AI Prompt</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Prompt engineering, sun'iy intellektga aniq vazifa berish san'ati.
+                </p>
+                <div className="text-xs font-mono text-amber-300">
+                  🎁 Mukofot: +40 Ball · +25 Coins · +2 ⭐
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-emerald-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400 font-extrabold text-sm">
+                  <span>🛡️ 4. Jasur Ustoz</span>
+                  <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-200">Kiberxavfsizlik</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Kuchli parollar, hashing, ikki bosqichli autentifikatsiya (2FA).
+                </p>
+                <div className="text-xs font-mono text-amber-300">
+                  🎁 Mukofot: +50 Ball · +30 Coins · +2 ⭐
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-rose-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-rose-400 font-extrabold text-sm">
+                  <span>⚔️ 5. Respublika Duellari</span>
+                  <span className="text-[10px] bg-rose-500/20 px-2 py-0.5 rounded text-rose-200">Final</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Olimpiada murakkablik darajasi (Big-O, binary search, dinamik dasturlash).
+                </p>
+                <div className="text-xs font-mono text-amber-300">
+                  🎁 Mukofot: +100 Ball · +60 Coins · +5 ⭐
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-pink-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-pink-400 font-extrabold text-sm">
+                  <span>🎮 Kiteshot 3D Portal</span>
+                  <span className="text-[10px] bg-pink-500/20 px-2 py-0.5 rounded text-pink-200">O'yin</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Ball to'lab kirish portali. G'olibga +3 ball, boshqa o'rinlarga +1 ball taqsimlanadi.
+                </p>
+                <div className="text-xs font-mono text-emerald-300">
+                  🟢 3D Muhit To'liq Faol
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

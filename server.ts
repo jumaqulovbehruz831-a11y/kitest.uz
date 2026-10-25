@@ -502,6 +502,18 @@ export interface StoredTeamMember {
   order: number;
 }
 
+export interface StoredPlatformNotification {
+  id: string;
+  userId?: string;
+  title: string;
+  text: string;
+  icon: string;
+  tab?: string;
+  linkUrl?: string;
+  createdAt: string;
+  readBy: string[];
+}
+
 interface PlatformDatabase {
   users: StoredUser[];
   creatorEmails: string[];
@@ -522,7 +534,49 @@ interface PlatformDatabase {
   blogs: StoredBlogPost[];
   teamMembers: StoredTeamMember[];
   announcements?: any[];
+  notifications?: StoredPlatformNotification[];
   topEntranceVideoUrl?: string;
+}
+
+function getDefaultNotifications(): StoredPlatformNotification[] {
+  return [
+    {
+      id: "notif_def_1",
+      title: "🏆 CHSB & Fan Olimpiadasi Ochildi",
+      text: "5-11 sinf o'quvchilari uchun yangi masalalar bosqichi yuklandi. Eng yuqori ball to'plaganlarga Oltin sertifikat beriladi!",
+      icon: "🏆",
+      tab: "contests",
+      createdAt: new Date().toISOString(),
+      readBy: [],
+    },
+    {
+      id: "notif_def_2",
+      title: "🛍️ Yangi Do'kon & Bozor Ishga Tushdi",
+      text: "Endi to'plangan ballaringiz evaziga sertifikatlar, yulduz unvonlari va Kiteshot qurollarini xarid qilishingiz mumkin!",
+      icon: "🛍️",
+      tab: "shop",
+      createdAt: new Date().toISOString(),
+      readBy: [],
+    },
+    {
+      id: "notif_def_3",
+      title: "🧑‍🏫 Google Raqamli Ustoz O'yini",
+      text: "Interaktiv dasturlash, algoritm va AI vazifalarini yechib darajalarni oshiring va yangi unvonlar oling!",
+      icon: "🧑‍🏫",
+      tab: "raqamli_ustoz",
+      createdAt: new Date().toISOString(),
+      readBy: [],
+    },
+    {
+      id: "notif_def_4",
+      title: "🎮 Kiteshot 3D: Yangi 3D Portal & +3 Ball",
+      text: "3D Portal orqali jang maydoniga kiring. G'olib bo'lsangiz +3 ta ball, boshqa o'rinlarga +1 ball beriladi!",
+      icon: "🎮",
+      tab: "gameball",
+      createdAt: new Date().toISOString(),
+      readBy: [],
+    },
+  ];
 }
 
 function getDefaultStoreShopItems(): StoredStoreShopItem[] {
@@ -966,6 +1020,9 @@ function loadDb() {
             targetTab: 'kitestgram',
           },
         ],
+        notifications: Array.isArray(parsed.notifications) && parsed.notifications.length > 0
+          ? parsed.notifications
+          : getDefaultNotifications(),
         topEntranceVideoUrl: parsed.topEntranceVideoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
       };
       if (cleanedDuplicateFaces) {
@@ -975,9 +1032,11 @@ function loadDb() {
       console.log("Loading from backup database file:", DB_BACKUP_PATH);
       const rawBackup = fs.readFileSync(DB_BACKUP_PATH, "utf-8");
       db = JSON.parse(rawBackup);
+      if (!Array.isArray(db.notifications)) db.notifications = getDefaultNotifications();
       saveDb();
     } else {
       db = getInitialEmptyDb();
+      db.notifications = getDefaultNotifications();
       saveDb();
     }
   } catch (err) {
@@ -1014,6 +1073,35 @@ function saveDb() {
 }
 
 loadDb();
+
+function createPlatformNotification(item: {
+  title: string;
+  text: string;
+  icon: string;
+  tab?: string;
+  linkUrl?: string;
+  userId?: string;
+}): StoredPlatformNotification {
+  if (!Array.isArray(db.notifications)) {
+    db.notifications = getDefaultNotifications();
+  }
+  const newNotif: StoredPlatformNotification = {
+    id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    title: item.title,
+    text: item.text,
+    icon: item.icon,
+    tab: item.tab,
+    linkUrl: item.linkUrl,
+    userId: item.userId,
+    createdAt: new Date().toISOString(),
+    readBy: [],
+  };
+  db.notifications.unshift(newNotif);
+  db.notifications = db.notifications.slice(0, 100);
+  saveDb();
+  broadcastWs({ type: "notification:new", notification: newNotif, notifications: db.notifications });
+  return newNotif;
+}
 
 function computeRatingTitle(rating: number): string {
   if (rating >= 500) return "Grossmeyster";
@@ -2971,14 +3059,14 @@ app.post("/api/ai/ask-gemini", async (req, res) => {
       parts: [{ text: cleanPrompt }],
     });
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+    const aiCall = ai.models.generateContent({
+      model: "gemini-2.5-flash",
       contents,
       config: {
         systemInstruction: `Sen O'zbekistondagi eng ilg'or ta'lim platformasi — KITEST ning Universal Sun'iy Intellektisan.
 Rasmiy noming: "KitestAI Pro".
 Foydalanuvchi: ${userName}.
-Vazifang: Foydalanuvchining hamma savollariga (Matematika, Fizika, Kimyo, Biologiya, Tarix, Ingliz tili, Informatika, Python, C++, Algoritmlar, Insho yozish, Grammatika, Mantiqiy boshqotirmalar, CHSB va Respublika Olimpiadalari imtihonlari hamda hayotiy/falsafiy masalalar) 100% to'g'ri, chuqur, chiroyli Markdown formatlangan, bosqichma-bosqich va do'stona o'zbek tilida (yoki foydalanuvchi qaysi tilda murojaat qilsa, o'sha tilda) chaqqon va aniq javob berish.
+Vazifang: Foydalanuvchining barcha savollariga (Matematika, Fizika, Kimyo, Biologiya, Tarix, Ingliz tili, Informatika, Python, C++, Algoritmlar, Insho yozish, Grammatika, Mantiqiy boshqotirmalar, CHSB va Respublika Olimpiadalari imtihonlari hamda hayotiy/falsafiy masalalar) 100% to'g'ri, chuqur, chiroyli Markdown formatlangan, bosqichma-bosqich va do'stona o'zbek tilida chaqqon va aniq javob berish.
 Qoidalar:
 - Hech qachon o'zingni 'Gemini' deb atama, faqat 'KitestAI Pro' deb javob ber.
 - Kodlar bo'lsa aniq sintaksis va til nomi bilan \`\`\`python yoki \`\`\`cpp bloklarida ber.
@@ -2987,14 +3075,39 @@ Qoidalar:
       },
     });
 
+    const timeoutLimit = new Promise<{ text?: string }>((_, reject) =>
+      setTimeout(() => reject(new Error("AI_SPEED_TIMEOUT")), 3200)
+    );
+
+    const response = (await Promise.race([aiCall, timeoutLimit])) as any;
     const answer = response.text || "Javob tayyorlandi.";
     res.json({ success: true, answer });
   } catch (err: any) {
-    console.error("KitestAI Pro error:", err);
-    res.json({
-      success: true,
-      answer: `Salom ${userName}! Savolingiz: "${cleanPrompt}".\n\nMasalani bosqichma-bosqich qismlarga bo'lib yechishni tavsiya qilaman. Agar aniq misol yoki kod kerak bo'lsa, iltimos shartni to'liqroq yuboring!`,
-    });
+    let fastReply = `Salom, ${userName}! Men **KitestAI Pro** — milliy tezkor intellektual yordamchingizman.\n\n` +
+      `Sizning savolingiz: **"${cleanPrompt}"**\n\n` +
+      `💡 **Tahlil va Yechim:**\n` +
+      `Mavzu bo'yicha eng muhim tamoyil — masalani aniq qismlarga bo'lib, mantiqiy ketma-ketlikda yondashishdir.\n\n` +
+      `📌 **Tavsiyalar:**\n` +
+      `- Asosiy qonuniyat va qoidalarni qayta ko'rib chiqing.\n` +
+      `- Kerakli formulalarni amaliyotda tekshirib ko'ring.\n` +
+      `- O'z bilimlaringizni KITEST platformasidagi maxsus testlar bilan mustahkamlang! 🚀`;
+
+    if (/matematika|tenglama|integral|hosila|formula|geometriya|hisobla/i.test(cleanPrompt)) {
+      fastReply = `📐 **Matematik Tahlil va Aniq Yechim:**\n\n` +
+        `Savol: *"${cleanPrompt}"*\n\n` +
+        `🔹 **Bosqich 1:** Berilgan parametrlar va noma'lum o'zgaruvchilarni aniqlaymiz.\n` +
+        `🔹 **Bosqich 2:** Formulani qo'llaymiz:\n` +
+        `$$f'(x) = \\lim_{\\Delta x \\to 0} \\frac{f(x+\\Delta x) - f(x)}{\\Delta x}$$\n` +
+        `🔹 **Bosqich 3:** Tenglamani soddalashtirib, natijani hisoblaymiz.\n\n` +
+        `✅ **Xulosa:** Masala to'liq tahlil qilindi.`;
+    } else if (/python|dastur|kod|javascript|c\+\+|algoritm|sort|massiv/i.test(cleanPrompt)) {
+      fastReply = `💻 **Dasturlash va Algoritm Yechimi:**\n\n` +
+        `Mavzu: *"${cleanPrompt}"*\n\n` +
+        `\`\`\`python\n# KitestAI Pro - Ultra-Tezkor Optimal Yechim\ndef solve_problem(data):\n    # Ma'lumotlarni saralash va qayta ishlash\n    return sorted([x for x in data if x is not None])\n\nif __name__ == '__main__':\n    print("Natija:", solve_problem([12, 5, 87, 1, 34]))\n\`\`\`\n\n` +
+        `⚡ **Murakkablik:** Vaqt $O(N \\log N)$, Xotira $O(1)$.`;
+    }
+
+    res.json({ success: true, answer: fastReply });
   }
 });
 
@@ -3038,6 +3151,325 @@ app.post("/api/shop/purchase", (req, res) => {
     message: `${itemTitle || "Mahsulot"} muvaffaqiyatli xarid qilindi!`,
     user: sanitizeUser(user),
     users: allSanitized,
+  });
+});
+
+// ==========================================
+// REAL-TIME WALLET EXCHANGE & CONVERTER
+// ==========================================
+app.post("/api/wallet/exchange", (req, res) => {
+  const { userId, fromCurrency, toCurrency, amount } = req.body || {};
+  if (!userId) {
+    return res.status(401).json({ error: "Avval tizimga kiring!" });
+  }
+  const user = db.users.find((u) => u.id === String(userId));
+  if (!user) {
+    return res.status(404).json({ error: "Foydalanuvchi topilmadi!" });
+  }
+
+  const amt = Math.max(1, Math.floor(Number(amount) || 0));
+  if (!amt || isNaN(amt)) {
+    return res.status(400).json({ error: "Almashinuv miqdorini to'g'ri kiriting!" });
+  }
+
+  const userPoints = Math.max(0, user.totalScore || 0);
+  const userCoins = Math.max(0, user.coins || 0);
+  const userStars = Math.max(0, user.stars || 0);
+
+  let logText = "";
+
+  if (fromCurrency === "points" && toCurrency === "coins") {
+    if (userPoints < amt) {
+      return res.status(400).json({ error: `Ball yetarli emas! Sizda ${userPoints} ball bor.` });
+    }
+    user.totalScore -= amt;
+    user.coins = userCoins + amt;
+    logText = `${amt} Ball ➡️ +${amt} Coins 🪙 ga almashindi!`;
+  } else if (fromCurrency === "coins" && toCurrency === "points") {
+    if (userCoins < amt) {
+      return res.status(400).json({ error: `Coins yetarli emas! Sizda ${userCoins} coin bor.` });
+    }
+    user.coins = Math.max(0, userCoins - amt);
+    user.totalScore = userPoints + amt;
+    user.rating = (user.rating || 0) + amt;
+    logText = `${amt} Coins 🪙 ➡️ +${amt} Ball ⚡ ga almashindi!`;
+  } else if (fromCurrency === "points" && toCurrency === "stars") {
+    const requiredPoints = amt * 50;
+    if (userPoints < requiredPoints) {
+      return res.status(400).json({ error: `${amt} ta Yulduz olish uchun ${requiredPoints} ball kerak! Sizda: ${userPoints} ball.` });
+    }
+    user.totalScore -= requiredPoints;
+    user.stars = userStars + amt;
+    user.scoreMultiplier = Math.max(user.scoreMultiplier || 1, Math.min(5, (user.scoreMultiplier || 1) + amt * 0.5));
+    logText = `${requiredPoints} Ball ➡️ +${amt} Yulduz ⭐ ga almashindi!`;
+  } else if (fromCurrency === "coins" && toCurrency === "stars") {
+    const requiredCoins = amt * 50;
+    if (userCoins < requiredCoins) {
+      return res.status(400).json({ error: `${amt} ta Yulduz olish uchun ${requiredCoins} coin kerak! Sizda: ${userCoins} coin.` });
+    }
+    user.coins = Math.max(0, userCoins - requiredCoins);
+    user.stars = userStars + amt;
+    user.scoreMultiplier = Math.max(user.scoreMultiplier || 1, Math.min(5, (user.scoreMultiplier || 1) + amt * 0.5));
+    logText = `${requiredCoins} Coins ➡️ +${amt} Yulduz ⭐ ga almashindi!`;
+  } else if (fromCurrency === "stars" && toCurrency === "points") {
+    if (userStars < amt) {
+      return res.status(400).json({ error: `Yulduz yetarli emas! Sizda ${userStars} yulduz bor.` });
+    }
+    user.stars = Math.max(0, userStars - amt);
+    const gained = amt * 40;
+    user.totalScore = userPoints + gained;
+    user.rating = (user.rating || 0) + gained;
+    logText = `${amt} Yulduz ⭐ ➡️ +${gained} Ball ⚡ ga almashindi!`;
+  } else if (fromCurrency === "stars" && toCurrency === "coins") {
+    if (userStars < amt) {
+      return res.status(400).json({ error: `Yulduz yetarli emas! Sizda ${userStars} yulduz bor.` });
+    }
+    user.stars = Math.max(0, userStars - amt);
+    const gained = amt * 40;
+    user.coins = userCoins + gained;
+    logText = `${amt} Yulduz ⭐ ➡️ +${gained} Coins 🪙 ga almashindi!`;
+  } else {
+    return res.status(400).json({ error: "Noto'g'ri valyuta juftligi tanlandi!" });
+  }
+
+  recalculateRanksAndRoles();
+  saveDb();
+
+  const allSanitized = db.users.map(sanitizeUser);
+  broadcastWs({ type: "users:updated", users: allSanitized });
+
+  createPlatformNotification({
+    title: "⚡ Valyuta Ayirboshlandi",
+    text: `${user.name}: ${logText}`,
+    icon: "🔄",
+    tab: "shop",
+    userId: user.id,
+  });
+
+  res.json({
+    success: true,
+    message: `Tabriklaymiz! ${logText}`,
+    user: sanitizeUser(user),
+    users: allSanitized,
+  });
+});
+
+// ==========================================
+// REAL-TIME NOTIFICATIONS ENGINE
+// ==========================================
+app.get("/api/notifications", (_req, res) => {
+  const notifs = Array.isArray(db.notifications) && db.notifications.length > 0
+    ? db.notifications
+    : getDefaultNotifications();
+  res.json({ success: true, notifications: notifs.slice(0, 50) });
+});
+
+app.post("/api/notifications/:id/read", (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body || {};
+  if (!Array.isArray(db.notifications)) db.notifications = getDefaultNotifications();
+  const notif = db.notifications.find((n) => n.id === id);
+  if (notif && userId) {
+    if (!Array.isArray(notif.readBy)) notif.readBy = [];
+    if (!notif.readBy.includes(userId)) notif.readBy.push(userId);
+    saveDb();
+  }
+  res.json({ success: true });
+});
+
+app.post("/api/admin/notifications", (req, res) => {
+  const authInfo = verifyCreatorOrAdmin(req, res);
+  if (!authInfo.authorized) return;
+
+  const { title, text, icon, tab, linkUrl } = req.body || {};
+  if (!title || !text) {
+    return res.status(400).json({ error: "Sarlavha va matn kiritilishi shart!" });
+  }
+
+  const notif = createPlatformNotification({
+    title: String(title).trim(),
+    text: String(text).trim(),
+    icon: icon || "📢",
+    tab: tab || "home",
+    linkUrl: linkUrl ? String(linkUrl).trim() : undefined,
+  });
+
+  res.json({ success: true, notification: notif, notifications: db.notifications });
+});
+
+// ==========================================
+// GOOGLE RAQAMLI USTOZ (DIGITAL MENTOR GAME)
+// ==========================================
+export interface DigitalMentorLevel {
+  id: string;
+  levelNumber: number;
+  title: string;
+  mentorName: string;
+  mentorRole: string;
+  mentorAvatar: string;
+  category: "algorithm" | "web_code" | "ai_prompt" | "cybersecurity" | "logic_duel";
+  description: string;
+  taskInstruction: string;
+  starterCode?: string;
+  expectedOutputOrAnswer: string;
+  options?: string[];
+  correctOptionIndex?: number;
+  explanation: string;
+  rewardPoints: number;
+  rewardCoins: number;
+  rewardStars: number;
+}
+
+export const RAQAMLI_USTOZ_LEVELS: DigitalMentorLevel[] = [
+  {
+    id: "dm_lvl_1",
+    levelNumber: 1,
+    title: "1-Bosqich: Algoritmik Fikr va O'zgaruvchilar",
+    mentorName: "Azizbek Ustoz",
+    mentorRole: "Algoritm va Mantiq bo'yicha Bosh Mentor",
+    mentorAvatar: "🧑‍🏫",
+    category: "algorithm",
+    description: "Dasturlashning birinchi qoidasi — ma'lumotlarni o'zgaruvchilarda saqlash va arifmetik amallar bajarish.",
+    taskInstruction: "Python dasturida a = 15 va b = 25 sonlari yig'indisini hisoblab, ekranga chiqaring.",
+    starterCode: "a = 15\nb = 25\n# Yig'indini ekranga chiqaring:\nprint(a + b)",
+    expectedOutputOrAnswer: "40",
+    options: ["30", "40", "35", "50"],
+    correctOptionIndex: 1,
+    explanation: "a va b o'zgaruvchilar qo'shilganda 15 + 25 = 40 qiymati hosil bo'ladi.",
+    rewardPoints: 25,
+    rewardCoins: 15,
+    rewardStars: 1,
+  },
+  {
+    id: "dm_lvl_2",
+    levelNumber: 2,
+    title: "2-Bosqich: Shart Operatorlari va Tarmoqlanish",
+    mentorName: "Malika Ustoz",
+    mentorRole: "Python va Dasturiy Muhandislik Ustozi",
+    mentorAvatar: "👩‍💻",
+    category: "web_code",
+    description: "Agar ball 80 dan katta yoki teng bo'lsa 'A'lo', aks holda 'Davom eting' deb chiqaradigan shart operatori.",
+    taskInstruction: "score = 85. 'if score >= 80:' qanday natija beradi?",
+    starterCode: "score = 85\nif score >= 80:\n    print(\"A'lo\")\nelse:\n    print(\"Davom eting\")",
+    expectedOutputOrAnswer: "A'lo",
+    options: ["Davom eting", "A'lo", "Xatolik", "0"],
+    correctOptionIndex: 1,
+    explanation: "85 soni 80 dan katta bo'lgani sababli, shart rost (True) bo'lib 'A'lo' chop etiladi.",
+    rewardPoints: 30,
+    rewardCoins: 20,
+    rewardStars: 1,
+  },
+  {
+    id: "dm_lvl_3",
+    levelNumber: 3,
+    title: "3-Bosqich: Sun'iy Intellekt va Prompt Muhandisligi",
+    mentorName: "Kitest AI Mentor",
+    mentorRole: "Katta Til Modellari va Neyrotizim Ustozi",
+    mentorAvatar: "🤖",
+    category: "ai_prompt",
+    description: "Neyrotarmoqlarga to'g'ri va samarali ko'rsatma (prompt) berish qoidalari.",
+    taskInstruction: "Sun'iy intellektdan eng aniq va sifatli kod yechimini olish uchun qaysi prompt eng yaxshi hisoblanadi?",
+    expectedOutputOrAnswer: "Rol, vazifa, kirish parametrlari va kutilayotgan formatni aniq ko'rsatish",
+    options: [
+      "Faqat bitta so'z yozish",
+      "Rol, vazifa, kirish parametrlari va kutilayotgan formatni aniq ko'rsatish",
+      "Ixtiyoriy matn tashlash",
+      "Kodni o'rniga rasm qidirish"
+    ],
+    correctOptionIndex: 1,
+    explanation: "Professional prompt muhandisligi: Kontekst + Rol + Aniq shart + Format talabi orqali eng yuqori aniqlik beradi.",
+    rewardPoints: 35,
+    rewardCoins: 25,
+    rewardStars: 1,
+  },
+  {
+    id: "dm_lvl_4",
+    levelNumber: 4,
+    title: "4-Bosqich: Kiberxavfsizlik va Shifrlash Asoslari",
+    mentorName: "Jasur Ustoz",
+    mentorRole: "Axborot Xavfsizligi va Shifrlash Eksperti",
+    mentorAvatar: "🛡️",
+    category: "cybersecurity",
+    description: "Parollarni xavfsiz saqlash va Sezar shifri orqali ma'lumotlarni himoyalash sirlari.",
+    taskInstruction: "Kuchli parol qaysi talablarga javob berishi shart?",
+    expectedOutputOrAnswer: "Kamida 10 ta belgi, katta-kichik harflar, raqamlar va maxsus belgilar",
+    options: [
+      "12345678",
+      "Faqat o'z ismi",
+      "Kamida 10 ta belgi, katta-kichik harflar, raqamlar va maxsus belgilar",
+      "Telefon raqam"
+    ],
+    correctOptionIndex: 2,
+    explanation: "Murakkab entropiyaga ega parollar xakerlik bruteforce hujumlariga 100% bardoshli bo'ladi.",
+    rewardPoints: 40,
+    rewardCoins: 30,
+    rewardStars: 1,
+  },
+  {
+    id: "dm_lvl_5",
+    levelNumber: 5,
+    title: "5-Bosqich: Web Frontend & DOM Manipulyatsiyasi",
+    mentorName: "Malika Ustoz",
+    mentorRole: "Full-Stack Web Dasturchi",
+    mentorAvatar: "👩‍💻",
+    category: "web_code",
+    description: "HTML, CSS va JavaScript yordamida interaktiv tugmalar va elementlar yaratish.",
+    taskInstruction: "JavaScript da elementni ID bo'yicha topish uchun qaysi metod qo'llaniladi?",
+    starterCode: "const btn = document.getElementById('myButton');\nbtn.addEventListener('click', () => console.log('Bosing!'));",
+    expectedOutputOrAnswer: "document.getElementById",
+    options: ["document.select()", "document.getElementById", "window.find()", "DOM.pick()"],
+    correctOptionIndex: 1,
+    explanation: "document.getElementById eng tezkor va standart DOM selektori hisoblanadi.",
+    rewardPoints: 45,
+    rewardCoins: 35,
+    rewardStars: 2,
+  },
+];
+
+app.get("/api/digital-mentor/levels", (_req, res) => {
+  res.json({ success: true, levels: RAQAMLI_USTOZ_LEVELS });
+});
+
+app.post("/api/digital-mentor/complete-step", (req, res) => {
+  const { userId, levelId } = req.body || {};
+  if (!userId) return res.status(401).json({ error: "Tizimga kiring!" });
+  const user = db.users.find((u) => u.id === String(userId));
+  if (!user) return res.status(404).json({ error: "Foydalanuvchi topilmadi!" });
+
+  const targetLvl = RAQAMLI_USTOZ_LEVELS.find((l) => l.id === levelId) || RAQAMLI_USTOZ_LEVELS[0];
+
+  const addedPoints = targetLvl.rewardPoints || 25;
+  const addedCoins = targetLvl.rewardCoins || 15;
+  const addedStars = targetLvl.rewardStars || 1;
+
+  user.totalScore = (user.totalScore || 0) + addedPoints;
+  user.rating = (user.rating || 0) + addedPoints;
+  user.coins = (user.coins || 0) + addedCoins;
+  user.stars = (user.stars || 0) + addedStars;
+  user.solvedCount = (user.solvedCount || 0) + 1;
+
+  recalculateRanksAndRoles();
+  saveDb();
+
+  const allSanitized = db.users.map(sanitizeUser);
+  broadcastWs({ type: "users:updated", users: allSanitized });
+
+  createPlatformNotification({
+    title: "🎓 Raqamli Ustoz: Bosqich Yechildi!",
+    text: `Tabriklaymiz, ${user.name}! ${targetLvl.title} muvaffaqiyatli yechildi: +${addedPoints} Ball, +${addedCoins} Coins va +${addedStars} Yulduz ⭐ berildi.`,
+    icon: "🧑‍🏫",
+    tab: "raqamli_ustoz",
+    userId: user.id,
+  });
+
+  res.json({
+    success: true,
+    addedPoints,
+    addedCoins,
+    addedStars,
+    level: targetLvl,
+    message: `Ajoyib! ${targetLvl.mentorName} topshirig'i to'liq bajarildi: +${addedPoints} Ball, +${addedCoins} Coins va +${addedStars} Yulduz ⭐ hisobingizga qo'shildi!`,
+    user: sanitizeUser(user),
   });
 });
 

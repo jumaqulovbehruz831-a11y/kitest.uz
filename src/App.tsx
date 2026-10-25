@@ -35,6 +35,8 @@ import {
 import { KitestAIGeminiAssistant } from './components/KitestAIGeminiAssistant';
 import { StoreShopView } from './components/StoreShopView';
 import { KitestGramView } from './components/KitestGramView';
+import { RaqamliUstozView } from './components/RaqamliUstozView';
+import { CurrencyExchangeModal } from './components/CurrencyExchangeModal';
 import {
   StudyPlansView,
   AlgorithmsView,
@@ -329,6 +331,7 @@ export default function App() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCertificatesStoreOpen, setIsCertificatesStoreOpen] = useState(false);
   const [isLuckyWheelOpen, setIsLuckyWheelOpen] = useState(false);
+  const [isExchangeModalOpen, setIsExchangeModalOpen] = useState(false);
   const [activeCertificate, setActiveCertificate] =
     useState<CertificateData | null>(null);
   const [isImageShowcaseOpen, setIsImageShowcaseOpen] = useState(false);
@@ -1276,6 +1279,25 @@ export default function App() {
                     </span>
                   </button>
 
+                  {/* 🧑‍🏫 GOOGLE RAQAMLI USTOZ (Interaktiv ta'limiy o'yin va kod poligoni) */}
+                  <button
+                    type="button"
+                    onClick={() => navigateTab('raqamli_ustoz')}
+                    className={`sidebar-neon-hover w-full py-2 px-2.5 rounded-xl text-xs font-black flex items-center justify-between transition-all cursor-pointer ${
+                      currentTab === 'raqamli_ustoz' && !selectedTest
+                        ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 text-white shadow-lg shadow-orange-500/30 ring-1 ring-amber-300'
+                        : 'text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-amber-400" />
+                      <span>🧑‍🏫 Raqamli Ustoz</span>
+                    </span>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/30 text-amber-200">
+                      ONLAYN O'YIN ⚡
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => navigateTab('contests')}
@@ -1700,6 +1722,7 @@ export default function App() {
               tests={tests}
               onSelectTest={handleSelectTest}
               onOpenPremium={() => setIsPremiumModalOpen(true)}
+              onOpenCurrencyExchange={() => setIsExchangeModalOpen(true)}
               onRefreshState={fetchPlatformState}
               onLogout={handleLogout}
             />
@@ -2058,6 +2081,17 @@ export default function App() {
                         onOpenLuckyWheel={() => setIsLuckyWheelOpen(true)}
                         onNavigateTab={(tab) => navigateTab(tab)}
                       />
+                    ) : currentTab === 'raqamli_ustoz' ? (
+                      <RaqamliUstozView
+                        currentUser={currentUser}
+                        soundEnabled={soundEnabled}
+                        onUpdateUser={(updated) => {
+                          setCurrentUser(updated);
+                          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated));
+                        }}
+                        onRequireLogin={() => openDedicatedAuthPage('login')}
+                        onNavigateTab={(tab) => navigateTab(tab as NavTab)}
+                      />
                     ) : null}
                 </motion.div>
               </AnimatePresence>
@@ -2347,6 +2381,21 @@ export default function App() {
           setIsImageShowcaseOpen(false);
           setShowcaseTargetImage(null);
           setShowcaseTargetUrl(undefined);
+        }}
+      />
+
+      <CurrencyExchangeModal
+        isOpen={isExchangeModalOpen}
+        onClose={() => setIsExchangeModalOpen(false)}
+        currentUser={currentUser}
+        soundEnabled={soundEnabled}
+        onUpdateUser={(updated) => {
+          setCurrentUser(updated);
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated));
+        }}
+        onRequireLogin={() => {
+          setIsExchangeModalOpen(false);
+          openDedicatedAuthPage('login');
         }}
       />
 
