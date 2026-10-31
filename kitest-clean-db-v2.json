@@ -639,5 +639,103 @@
       "isFounder": true,
       "order": 1
     }
-  ]
+  ],
+  "announcements": [
+    {
+      "id": "ann_init_1",
+      "title": "🏆 Respublika CHSB & Matematika Fan Olimpiadasi Boshlandi!",
+      "category": "olimpiada",
+      "categoryLabel": "Fan Olimpiadasi",
+      "emoji": "🏆",
+      "date": "24-Oktyabr, 2026",
+      "isPinned": true,
+      "content": "Barcha 5-11 sinf o‘quvchilari va abituriyentlar uchun yangi bosqich masalalari ochildi. Eng yuqori ball to‘plagan 3 kishiga rasmiy Oltin sertifikat va sovg‘alar taqdim etiladi.",
+      "targetTab": "contests"
+    },
+    {
+      "id": "ann_init_2",
+      "title": "🚀 Kiteshot 3D Real-Time Duel & Yangi Harakat Mexanikasi",
+      "category": "coding",
+      "categoryLabel": "Kiteshot 3D",
+      "emoji": "🎮",
+      "date": "23-Oktyabr, 2026",
+      "isPinned": true,
+      "content": "Roblox Hypershot uslubidagi harakatlar, raqiblarning lazer bilan otishi, o‘lganda qayta paydo bo‘lish (respawn) va himoya qalqoni tizimi ishga tushirildi! 1-o‘rin egalariga 3 ta ball beriladi.",
+      "targetTab": "gameball"
+    },
+    {
+      "id": "ann_init_3",
+      "title": "🤖 KitestAI Pro: Ultra-Tezkor Intellektual Neyrotizim Ishga Tushdi!",
+      "category": "yangilik",
+      "categoryLabel": "KitestAI Pro",
+      "emoji": "⚡",
+      "date": "Bugun",
+      "isPinned": true,
+      "content": "Matematika, Fizika, Dasturlash va barcha fan savollariga ultra-tezkor va xotirali rejimda 100% mukammal javob beruvchi yangi intellektual assistent tayyor!",
+      "targetTab": "gemini_ai"
+    },
+    {
+      "id": "ann_init_4",
+      "title": "✈️ KitestGram: Telegram Dek Haqiqiy Onlayn Muloqot",
+      "category": "yangilik",
+      "categoryLabel": "KitestGram",
+      "emoji": "✈️",
+      "date": "Bugun",
+      "isPinned": true,
+      "content": "Telegram ko‘rinishidagi xabarlar, kanallar, guruhlar, ovozli xabarlar va jonli emotsiyalar bilan real vaqtda yozishing!",
+      "targetTab": "kitestgram"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif_1793417214468_iwnl",
+      "title": "🏆 Respublika Matematika Olimpiadasi Boshlandi!",
+      "text": "Barcha bilimdonlar uchun 1-bosqich testlari ochildi. Omad!",
+      "icon": "🔔",
+      "time": "Hozirgina",
+      "timestamp": "2026-10-31T03:26:54.468Z",
+      "isRead": false,
+      "category": "Tizim",
+      "targetTab": "contests",
+      "createdAt": "2026-10-31T03:26:54.468Z",
+      "readBy": []
+    },
+    {
+      "id": "notif_def_1",
+      "title": "🏆 CHSB & Fan Olimpiadasi Ochildi",
+      "text": "5-11 sinf o'quvchilari uchun yangi masalalar bosqichi yuklandi. Eng yuqori ball to'plaganlarga Oltin sertifikat beriladi!",
+      "icon": "🏆",
+      "tab": "contests",
+      "createdAt": "2026-10-31T03:26:40.849Z",
+      "readBy": []
+    },
+    {
+      "id": "notif_def_2",
+      "title": "🛍️ Yangi Do'kon & Bozor Ishga Tushdi",
+      "text": "Endi to'plangan ballaringiz evaziga sertifikatlar, yulduz unvonlari va Kiteshot qurollarini xarid qilishingiz mumkin!",
+      "icon": "🛍️",
+      "tab": "shop",
+      "createdAt": "2026-10-31T03:26:40.849Z",
+      "readBy": []
+    },
+    {
+      "id": "notif_def_3",
+      "title": "🧑‍🏫 Google Raqamli Ustoz O'yini",
+      "text": "Interaktiv dasturlash, algoritm va AI vazifalarini yechib darajalarni oshiring va yangi unvonlar oling!",
+      "icon": "🧑‍🏫",
+      "tab": "raqamli_ustoz",
+      "createdAt": "2026-10-31T03:26:40.849Z",
+      "readBy": []
+    },
+    {
+      "id": "notif_def_4",
+      "title": "🎮 Kiteshot 3D: Yangi 3D Portal & +3 Ball",
+      "text": "3D Portal orqali jang maydoniga kiring. G'olib bo'lsangiz +3 ta ball, boshqa o'rinlarga +1 ball beriladi!",
+      "icon": "🎮",
+      "tab": "gameball",
+      "createdAt": "2026-10-31T03:26:40.849Z",
+      "readBy": []
+    }
+  ],
+  "topEntranceVideoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ"
 }

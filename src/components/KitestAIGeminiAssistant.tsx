@@ -142,11 +142,11 @@ export const KitestAIGeminiAssistant: React.FC<KitestAIGeminiAssistantProps> = (
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(`Server xatosi: ${res.status}`);
+        throw new Error(data.error || `Server xatosi (${res.status})`);
       }
 
-      const data = await res.json();
       const answer = data.answer || "Kechirasiz, javob olib bo'lmadi. Qayta urinib ko'ring.";
 
       const aiMsg: Message = {
@@ -158,11 +158,11 @@ export const KitestAIGeminiAssistant: React.FC<KitestAIGeminiAssistantProps> = (
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err: any) {
-      console.error('Gemini ask error:', err);
+      console.error('KitestAI Pro error:', err);
       const errorMsg: Message = {
         id: `ai_err_${Date.now()}`,
         role: 'model',
-        text: `Kechirasiz, aloqa uzildi. Lekin siz quyidagi maslahat bilan harakat qilishingiz mumkin:\n\n**"${query}"** masalasi bo'yicha asosiy tushunchalarni formulalar orqali tahlil qiling yoki test yaratish bo'limida yangi mashqlar tuzing!`,
+        text: `⚠️ **Sun'iy Intellekt Bildirishi:**\n\n${err?.message || "Aloqa vaqtinchalik uzildi."}\n\nIltimos, savolingizni qayta yuboring yoki birozdan so'ng takrorlang.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);

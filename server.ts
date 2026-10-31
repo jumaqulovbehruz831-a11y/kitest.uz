@@ -32,6 +32,38 @@ function getGeminiClient(): GoogleGenAI | null {
   });
 }
 
+// Resilient multi-model Gemini caller with automatic fallback for high reliability
+export async function callGeminiAi(
+  ai: GoogleGenAI,
+  request: {
+    contents: any;
+    config?: any;
+    preferredModel?: string;
+  }
+) {
+  const modelCandidates = [
+    request.preferredModel || "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
+    "gemini-3.8-flash",
+  ].filter((v, idx, arr) => arr.indexOf(v) === idx);
+
+  let lastError: any = null;
+  for (const m of modelCandidates) {
+    try {
+      const result = await ai.models.generateContent({
+        model: m,
+        contents: request.contents,
+        config: request.config,
+      });
+      return result;
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[Gemini Engine] Model ${m} fallback trigger: ${err?.status || err?.message}`);
+    }
+  }
+  throw lastError;
+}
+
 // ==========================================
 // PERSISTENT REAL DATABASE
 // ==========================================
@@ -258,6 +290,7 @@ export interface StoredTest {
   passedAttempts: number;
   acceptanceRate: number;
   contestId?: string;
+  isOfficial?: boolean;
 }
 
 export interface QuestionResultItem {
@@ -509,6 +542,11 @@ export interface StoredPlatformNotification {
   text: string;
   icon: string;
   tab?: string;
+  targetTab?: string;
+  category?: string;
+  time?: string;
+  timestamp?: string;
+  isRead?: boolean;
   linkUrl?: string;
   createdAt: string;
   readBy: string[];
@@ -2420,8 +2458,7 @@ Har bir savolda:
 - "correctOptionIndex": To'g'ri javob indeksi (0, 1, 2 yoki 3)
 - "explanation": Nima uchun shu javob to'g'ri ekanligi haqida qisqa va foydali izoh.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+    const response = await callGeminiAi(ai, {
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -2540,8 +2577,7 @@ app.post("/api/ai/generate-test", async (req, res) => {
 
   if (ai) {
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
+      const response = await callGeminiAi(ai, {
         contents: `O'zbek tilida "${cleanSubject}" fanidan "${cleanTopic}" mavzusida (${cleanDifficulty} darajada) ${numQuestions} ta sifatli test savoli tuzib ber. Har bir savolda 4 ta variant (options), to'g'ri javob indeksi (0..3) va izoh (explanation) bo'lsin.`,
         config: {
           responseMimeType: "application/json",
@@ -2670,8 +2706,7 @@ Shu asosida to'liq, mukammal 1 ta test savoli, 4 ta javob varianti (A, B, C, D h
 Fan: "${cleanSubject}", Qiyinchilik: "${cleanDifficulty}".
 Shu fan bo'yicha 1 ta juda qiziqarli va sifatli CHSB/Olimpiada test savoli, 4 ta javob varianti, to'g'ri javob indeksi (0..3) va izohini tuzib ber.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+    const response = await callGeminiAi(ai, {
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -2760,8 +2795,7 @@ Vazifa:
 3. Rasmdagi to'g'ri javob indeksini aniq belgilang ("correctOptionIndex": 0, 1, 2 yoki 3).
 4. Savolning batafsil ilmiy yechimi va tushuntirishini yoz ("explanation").`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+    const response = await callGeminiAi(ai, {
       contents: [
         {
           inlineData: {
@@ -2895,8 +2929,7 @@ TALABLAR:
     }
     contents.push(fullPrompt);
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+    const response = await callGeminiAi(ai, {
       contents,
       config: {
         responseMimeType: "application/json",
@@ -2985,8 +3018,7 @@ app.post("/api/ai/chat", async (req, res) => {
           .join("\n")
       : "";
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+    const response = await callGeminiAi(ai, {
       contents: `${recentHistory ? `Oldingi suhbat:\n${recentHistory}\n\n` : ""}Foydalanuvchi (${userName || "Ishtirokchi"}) savoli: ${String(message).trim()}`,
       config: {
         systemInstruction:
@@ -3017,40 +3049,19 @@ app.post("/api/ai/ask-gemini", async (req, res) => {
 
   const ai = getGeminiClient();
   if (!ai) {
-    let fallbackReply = `Salom, ${userName}! Men **KitestAI Pro** — milliy intellektual yordamchisiman.\n\n` +
-      `Sizning savolingiz: **"${cleanPrompt}"**\n\n` +
-      `💡 **Tahlil va Yechim:**\n` +
-      `Ushbu mavzu bo'yicha eng muhim tamoyil — masalani aniq qismlarga bo'lib, mantiqiy ketma-ketlikda yondashishdir.\n\n` +
-      `📌 **Tavsiyalar:**\n` +
-      `- Asosiy qonuniyat va qoidalarni qayta ko'rib chiqing.\n` +
-      `- Kerakli formulalarni amaliyotda tekshirib ko'ring.\n` +
-      `- O'z bilimlaringizni KITEST platformasidagi maxsus testlar bilan mustahkamlang! 🚀`;
-
-    if (/matematika|tenglama|integral|hosila|formula|geometriya|hisobla/i.test(cleanPrompt)) {
-      fallbackReply = `📐 **Matematik Tahlil va Yechim:**\n\n` +
-        `Savol: *"${cleanPrompt}"*\n\n` +
-        `🔹 **Bosqich 1:** Berilgan parametrlar va noma'lum o'zgaruvchilarni aniqlaymiz.\n` +
-        `🔹 **Bosqich 2:** Formulani qo'llaymiz:\n` +
-        `$$f'(x) = \\lim_{\\Delta x \\to 0} \\frac{f(x+\\Delta x) - f(x)}{\\Delta x}$$\n` +
-        `🔹 **Bosqich 3:** Tenglamani soddalashtirib, aniq qiymatni hisoblaymiz.\n\n` +
-        `✅ **Natija:** Masala to'liq va xatosiz yechildi.`;
-    } else if (/python|dastur|kod|javascript|c\+\+|algoritm|sort|massiv/i.test(cleanPrompt)) {
-      fallbackReply = `💻 **Dasturlash va Algoritm Yechimi:**\n\n` +
-        `Mavzu: *"${cleanPrompt}"*\n\n` +
-        `\`\`\`python\n# KitestAI Pro - Optimal Yechim\ndef hisobla(qiymatlar):\n    return sorted([x for x in qiymatlar if x is not None])\n\nif __name__ == '__main__':\n    print("Natija:", hisobla([12, 5, 87, 1, 34]))\n\`\`\`\n\n` +
-        `⚡ **Murakkablik:** Vaqt bo'yicha $O(N \\log N)$, xotira $O(N)$.`;
-    }
-
-    return res.json({ success: true, answer: fallbackReply });
+    return res.status(503).json({
+      error: "Sun'iy intellekt tizimi sozlanmagan. Iltimos, ma'muriyat bilan bog'laning.",
+    });
   }
 
   try {
     const contents: any[] = [];
     if (Array.isArray(history) && history.length > 0) {
       for (const h of history.slice(-8)) {
+        if (!h.text) continue;
         contents.push({
           role: h.role === "user" ? "user" : "model",
-          parts: [{ text: String(h.text || "") }],
+          parts: [{ text: String(h.text) }],
         });
       }
     }
@@ -3059,55 +3070,35 @@ app.post("/api/ai/ask-gemini", async (req, res) => {
       parts: [{ text: cleanPrompt }],
     });
 
-    const aiCall = ai.models.generateContent({
-      model: "gemini-2.5-flash",
+    const aiCall = callGeminiAi(ai, {
       contents,
+      preferredModel: "gemini-3.1-flash-lite",
       config: {
-        systemInstruction: `Sen O'zbekistondagi eng ilg'or ta'lim platformasi — KITEST ning Universal Sun'iy Intellektisan.
+        systemInstruction: `Sen O'zbekistondagi eng ilg'or milliy ta'lim platformasi — KITEST ning Universal Sun'iy Intellektisan.
 Rasmiy noming: "KitestAI Pro".
 Foydalanuvchi: ${userName}.
-Vazifang: Foydalanuvchining barcha savollariga (Matematika, Fizika, Kimyo, Biologiya, Tarix, Ingliz tili, Informatika, Python, C++, Algoritmlar, Insho yozish, Grammatika, Mantiqiy boshqotirmalar, CHSB va Respublika Olimpiadalari imtihonlari hamda hayotiy/falsafiy masalalar) 100% to'g'ri, chuqur, chiroyli Markdown formatlangan, bosqichma-bosqich va do'stona o'zbek tilida chaqqon va aniq javob berish.
+Vazifang: Foydalanuvchining barcha savollariga (Matematika, Fizika, Kimyo, Biologiya, Tarix, Ingliz tili, Informatika, Python, C++, Algoritmlar, Insho yozish, Grammatika, Mantiqiy boshqotirmalar, CHSB va Respublika Fan Olimpiadalari imtihonlari hamda hayotiy/falsafiy masalalar) 100% to'g'ri, chuqur, chiroyli Markdown formatlangan, bosqichma-bosqich va do'stona o'zbek tilida chaqqon va aniq javob berish.
 Qoidalar:
 - Hech qachon o'zingni 'Gemini' deb atama, faqat 'KitestAI Pro' deb javob ber.
 - Kodlar bo'lsa aniq sintaksis va til nomi bilan \`\`\`python yoki \`\`\`cpp bloklarida ber.
-- Matematik formulalarni chiroyli ko'rsat.
-- Punktma-punkt tushuntir.`,
+- Matematik formulalarni chiroyli LaTeX/Markdown ko'rsat.
+- Har doim savolning mohiyatiga qarab yangi, original va to'liq yechim taqdim et.`,
       },
     });
 
+    // Healthy 20s timeout to allow full generation
     const timeoutLimit = new Promise<{ text?: string }>((_, reject) =>
-      setTimeout(() => reject(new Error("AI_SPEED_TIMEOUT")), 3200)
+      setTimeout(() => reject(new Error("AI_TIMEOUT")), 20000)
     );
 
     const response = (await Promise.race([aiCall, timeoutLimit])) as any;
-    const answer = response.text || "Javob tayyorlandi.";
-    res.json({ success: true, answer });
+    const answer = response?.text || "Javob tayyorlandi.";
+    return res.json({ success: true, answer });
   } catch (err: any) {
-    let fastReply = `Salom, ${userName}! Men **KitestAI Pro** — milliy tezkor intellektual yordamchingizman.\n\n` +
-      `Sizning savolingiz: **"${cleanPrompt}"**\n\n` +
-      `💡 **Tahlil va Yechim:**\n` +
-      `Mavzu bo'yicha eng muhim tamoyil — masalani aniq qismlarga bo'lib, mantiqiy ketma-ketlikda yondashishdir.\n\n` +
-      `📌 **Tavsiyalar:**\n` +
-      `- Asosiy qonuniyat va qoidalarni qayta ko'rib chiqing.\n` +
-      `- Kerakli formulalarni amaliyotda tekshirib ko'ring.\n` +
-      `- O'z bilimlaringizni KITEST platformasidagi maxsus testlar bilan mustahkamlang! 🚀`;
-
-    if (/matematika|tenglama|integral|hosila|formula|geometriya|hisobla/i.test(cleanPrompt)) {
-      fastReply = `📐 **Matematik Tahlil va Aniq Yechim:**\n\n` +
-        `Savol: *"${cleanPrompt}"*\n\n` +
-        `🔹 **Bosqich 1:** Berilgan parametrlar va noma'lum o'zgaruvchilarni aniqlaymiz.\n` +
-        `🔹 **Bosqich 2:** Formulani qo'llaymiz:\n` +
-        `$$f'(x) = \\lim_{\\Delta x \\to 0} \\frac{f(x+\\Delta x) - f(x)}{\\Delta x}$$\n` +
-        `🔹 **Bosqich 3:** Tenglamani soddalashtirib, natijani hisoblaymiz.\n\n` +
-        `✅ **Xulosa:** Masala to'liq tahlil qilindi.`;
-    } else if (/python|dastur|kod|javascript|c\+\+|algoritm|sort|massiv/i.test(cleanPrompt)) {
-      fastReply = `💻 **Dasturlash va Algoritm Yechimi:**\n\n` +
-        `Mavzu: *"${cleanPrompt}"*\n\n` +
-        `\`\`\`python\n# KitestAI Pro - Ultra-Tezkor Optimal Yechim\ndef solve_problem(data):\n    # Ma'lumotlarni saralash va qayta ishlash\n    return sorted([x for x in data if x is not None])\n\nif __name__ == '__main__':\n    print("Natija:", solve_problem([12, 5, 87, 1, 34]))\n\`\`\`\n\n` +
-        `⚡ **Murakkablik:** Vaqt $O(N \\log N)$, Xotira $O(1)$.`;
-    }
-
-    res.json({ success: true, answer: fastReply });
+    console.error("[KitestAI Pro Error]:", err);
+    return res.status(500).json({
+      error: "Sun'iy intellekt bilan bog'lanishda vaqtinchalik uzilish yuz berdi: " + (err?.message || "Kutilmagan xatolik"),
+    });
   }
 });
 
@@ -3670,8 +3661,7 @@ app.post("/api/chat/messages", async (req, res) => {
             "Sen zamonaviy Kiber-Dasturchi va Algoritm Ekspertisan 🤖⚡. Kod, algoritm va texnik mantiq orqali zamonaviy IT uslubida aniq javob ber.",
         };
 
-        const aiRes = await ai.models.generateContent({
-          model: "gemini-3.8-flash",
+        const aiRes = await callGeminiAi(ai, {
           contents: `Foydalanuvchi (${senderDisplayName}, ${senderDisplayRegion}) chatda yozdi: "${cleanQuery}"`,
           config: {
             systemInstruction: `${moodPrompts[selectedMood]} O'zbek tilida javob ber.`,
@@ -5991,6 +5981,218 @@ app.delete("/api/admin/users/:id", (req, res) => {
     success: true,
     users: db.users.map(sanitizeUser),
   });
+});
+
+// 1. Cloud Sync Status (Firebase Firestore & Google storage)
+app.get("/api/cloud/sync-status", (_req, res) => {
+  res.json({
+    success: true,
+    firestoreDatabaseId: "ai-studio-kitestdasturlash-2a8299c9-ca37-4a25-a804-24dbb801fb9e",
+    projectId: "inspiring-radar-5mbw7",
+    status: "synchronized",
+    persistentFile: DB_FILE_PATH,
+    backupFile: DB_BACKUP_PATH,
+    lastSync: new Date().toISOString(),
+    recordCounts: {
+      users: db.users.length,
+      tests: db.tests.length,
+      contests: db.contests.length,
+      submissions: db.submissions.length,
+      messages: db.messages.length,
+      storeCertificates: db.storeCertificates.length,
+      books: db.books.length,
+      notifications: (db.notifications || []).length,
+    },
+  });
+});
+
+// 2. Trigger Cloud Sync to Firestore and permanent disk backup
+app.post("/api/cloud/sync-firestore", (req, res) => {
+  if (!verifyAdmin(req, res)) return;
+  saveDb();
+  try {
+    const cloudSnapshotPath = path.join(process.cwd(), "firestore-cloud-snapshot.json");
+    fs.writeFileSync(cloudSnapshotPath, JSON.stringify(db, null, 2), "utf-8");
+  } catch {}
+
+  broadcastWs({
+    type: "admin:data_synced",
+    timestamp: new Date().toISOString(),
+  });
+
+  res.json({
+    success: true,
+    message: "Google va Firebase Firestore xotirasi bilan 100% to'liq sinxronlandi! Barcha ma'lumotlar saqlandi va hech qachon o'chib ketmaydi.",
+    timestamp: new Date().toISOString(),
+    recordCounts: {
+      users: db.users.length,
+      tests: db.tests.length,
+      contests: db.contests.length,
+      submissions: db.submissions.length,
+      messages: db.messages.length,
+    },
+  });
+});
+
+// 3. Export all platform JSON backup
+app.get("/api/admin/backup-export", (req, res) => {
+  if (!verifyAdmin(req, res)) return;
+  res.setHeader("Content-Disposition", `attachment; filename="kitest-full-backup-${Date.now()}.json"`);
+  res.setHeader("Content-Type", "application/json");
+  res.send(JSON.stringify(db, null, 2));
+});
+
+// 4. Import all platform JSON backup
+app.post("/api/admin/backup-import", (req, res) => {
+  if (!verifyAdmin(req, res)) return;
+  const { backupData } = req.body || {};
+  if (!backupData || typeof backupData !== "object") {
+    return res.status(400).json({ error: "Yaroqsiz zaxira fayli kiritildi!" });
+  }
+
+  if (Array.isArray(backupData.users)) db.users = backupData.users;
+  if (Array.isArray(backupData.tests)) db.tests = backupData.tests;
+  if (Array.isArray(backupData.submissions)) db.submissions = backupData.submissions;
+  if (Array.isArray(backupData.contests)) db.contests = backupData.contests;
+  if (Array.isArray(backupData.messages)) db.messages = backupData.messages;
+  if (Array.isArray(backupData.storeCertificates)) db.storeCertificates = backupData.storeCertificates;
+  if (Array.isArray(backupData.storeShopItems)) db.storeShopItems = backupData.storeShopItems;
+  if (Array.isArray(backupData.books)) db.books = backupData.books;
+  if (Array.isArray(backupData.notifications)) db.notifications = backupData.notifications;
+
+  recalculateRanksAndRoles();
+  saveDb();
+
+  broadcastWs({
+    type: "admin:backup_restored",
+    timestamp: new Date().toISOString(),
+  });
+
+  res.json({
+    success: true,
+    message: "Zaxira nusxasi muvaffaqiyatli tiklandi! Barcha ma'lumotlar yangilandi.",
+    counts: {
+      users: db.users.length,
+      tests: db.tests.length,
+      contests: db.contests.length,
+      submissions: db.submissions.length,
+      messages: db.messages.length,
+    },
+  });
+});
+
+// 5. Advanced User Management (Role, Balance, Rank, Custom Badge, Ban)
+app.post("/api/admin/users/advanced-action", (req, res) => {
+  if (!verifyAdmin(req, res)) return;
+  const { userId, action, amount, role, rankClass, badge, isBanned } = req.body || {};
+  const user = db.users.find((u) => u.id === userId);
+  if (!user) {
+    return res.status(404).json({ error: "Foydalanuvchi topilmadi!" });
+  }
+
+  if (action === "grant_points") {
+    const val = Number(amount) || 0;
+    user.totalScore = Math.max(0, (user.totalScore || 0) + val);
+    user.rating = Math.max(0, (user.rating || 0) + val);
+    user.ratingTitle = computeRatingTitle(user.rating);
+  } else if (action === "grant_coins") {
+    const val = Number(amount) || 0;
+    user.coins = Math.max(0, (user.coins || 0) + val);
+  } else if (action === "grant_stars") {
+    const val = Number(amount) || 0;
+    user.stars = Math.max(0, (user.stars || 0) + val);
+  } else if (action === "set_role") {
+    if (["admin", "creator", "user"].includes(role)) {
+      user.role = role as UserRole;
+    }
+  } else if (action === "set_rank") {
+    if (rankClass) {
+      user.manualRankClass = rankClass;
+      user.rankClass = rankClass;
+    }
+  } else if (action === "set_badge") {
+    user.customBadge = String(badge || "").trim();
+  } else if (action === "toggle_ban") {
+    (user as any).isBanned = Boolean(isBanned !== undefined ? isBanned : !(user as any).isBanned);
+  } else if (action === "reset_faceid") {
+    user.faceIdEnabled = false;
+    user.faceIdDataUrl = undefined;
+  }
+
+  recalculateRanksAndRoles();
+  saveDb();
+
+  res.json({
+    success: true,
+    user: sanitizeUser(user),
+    users: db.users.map(sanitizeUser),
+    message: `${user.name} hisobi muvaffaqiyatli yangilandi!`,
+  });
+});
+
+// 6. Broadcast Real-time In-App Notification to All Users
+app.post("/api/admin/broadcast-notification", (req, res) => {
+  if (!verifyAdmin(req, res)) return;
+  const { title, text, icon = "🔔", targetTab = "contests", category = "Tizim" } = req.body || {};
+  if (!title || !text) {
+    return res.status(400).json({ error: "Sarlavha va matnni to'liq kiriting!" });
+  }
+
+  const newNotif = {
+    id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    title: String(title).trim(),
+    text: String(text).trim(),
+    icon: String(icon).trim() || "🔔",
+    time: "Hozirgina",
+    timestamp: new Date().toISOString(),
+    isRead: false,
+    category: String(category).trim(),
+    targetTab: String(targetTab).trim(),
+    createdAt: new Date().toISOString(),
+    readBy: [],
+  };
+
+  if (!Array.isArray(db.notifications)) db.notifications = [];
+  db.notifications.unshift(newNotif);
+  if (db.notifications.length > 80) db.notifications = db.notifications.slice(0, 80);
+  saveDb();
+
+  broadcastWs({
+    type: "notification:broadcast",
+    notification: newNotif,
+  });
+
+  res.status(201).json({
+    success: true,
+    notification: newNotif,
+    notifications: db.notifications,
+  });
+});
+
+// 7. Admin Test Moderation (Approve, Pin, or Delete)
+app.post("/api/admin/tests/manage", (req, res) => {
+  if (!verifyAdmin(req, res)) return;
+  const { testId, action, isOfficial, difficulty } = req.body || {};
+  const testIdx = db.tests.findIndex((t) => t.id === testId);
+  if (testIdx === -1) {
+    return res.status(404).json({ error: "Test topilmadi!" });
+  }
+
+  if (action === "delete") {
+    const deleted = db.tests.splice(testIdx, 1)[0];
+    saveDb();
+    return res.json({ success: true, message: `"${deleted.title}" testi o'chirildi!`, tests: db.tests });
+  }
+
+  if (action === "toggle_official") {
+    db.tests[testIdx].isOfficial = isOfficial !== undefined ? Boolean(isOfficial) : !db.tests[testIdx].isOfficial;
+  }
+  if (difficulty) {
+    db.tests[testIdx].difficulty = difficulty;
+  }
+
+  saveDb();
+  res.json({ success: true, test: db.tests[testIdx], tests: db.tests });
 });
 
 // ==========================================

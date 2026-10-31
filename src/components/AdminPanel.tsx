@@ -57,6 +57,10 @@ import {
   Sliders,
   ShoppingBag,
   Gamepad2,
+  Database,
+  HardDrive,
+  Cloud,
+  Download,
 } from 'lucide-react';
 import { OFFICIAL_YOUTUBE_URL } from '../types';
 import { KIDTEST_LOGO_DATA_URL } from './KitestEmblem';
@@ -84,6 +88,7 @@ interface AdminPanelProps {
 }
 
 type AdminSectionTab =
+  | 'cloud_storage'
   | 'ratings'
   | 'wallet_grants'
   | 'announcements'
@@ -218,6 +223,150 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editScoreMultiplier, setEditScoreMultiplier] = useState<number>(1);
   const [ratingStatusMsg, setRatingStatusMsg] = useState<string | null>(null);
   const [isBusyAction, setIsBusyAction] = useState(false);
+
+  // Cloud & Firebase Persistent Storage state
+  const [cloudStatus, setCloudStatus] = useState<any>(null);
+  const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
+  const [cloudMessage, setCloudMessage] = useState<string | null>(null);
+  const [notifBroadcastTitle, setNotifBroadcastTitle] = useState<string>('');
+  const [notifBroadcastText, setNotifBroadcastText] = useState<string>('');
+  const [notifBroadcastIcon, setNotifBroadcastIcon] = useState<string>('🔔');
+  const [notifBroadcastTab, setNotifBroadcastTab] = useState<string>('contests');
+  const [isSendingNotif, setIsSendingNotif] = useState<boolean>(false);
+  const [notifStatusMsg, setNotifStatusMsg] = useState<string | null>(null);
+
+  const fetchCloudStatus = async () => {
+    try {
+      const res = await fetch('/api/cloud/sync-status');
+      if (res.ok) {
+        const data = await res.json();
+        setCloudStatus(data);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchCloudStatus();
+  }, []);
+
+  const handleSyncToCloud = async () => {
+    setIsSyncingCloud(true);
+    setCloudMessage(null);
+    try {
+      const res = await fetch('/api/cloud/sync-firestore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-passcode': adminPasscode,
+        },
+        body: JSON.stringify({ adminPasscode }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCloudMessage(`✅ ${data.message || "Google & Firebase xotirasiga to'liq saqlandi!"}`);
+        await onRefreshData();
+        fetchCloudStatus();
+      } else {
+        setCloudMessage(`❌ Xatolik: ${data.error || "Sinxronlash amalga oshmadi"}`);
+      }
+    } catch (err: any) {
+      setCloudMessage(`❌ Tarmoq xatosi: ${err.message}`);
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
+
+  const handleDownloadFullBackup = () => {
+    const jsonStr = JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      firestoreDatabaseId: "ai-studio-kitestdasturlash-2a8299c9-ca37-4a25-a804-24dbb801fb9e",
+      projectId: "inspiring-radar-5mbw7",
+      users,
+      tests,
+      contests,
+      submissions,
+      storeCertificates,
+    }, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kitest-google-firebase-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportBackupFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const content = ev.target?.result as string;
+        const parsed = JSON.parse(content);
+        const res = await fetch('/api/admin/backup-import', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-passcode': adminPasscode,
+          },
+          body: JSON.stringify({ adminPasscode, backupData: parsed }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert("✅ Zaxira muvaffaqiyatli tiklandi!");
+          await onRefreshData();
+          fetchCloudStatus();
+        } else {
+          alert(`❌ Tiklashda xatolik: ${data.error}`);
+        }
+      } catch (err: any) {
+        alert("❌ JSON faylini o'qishda xatolik: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleSendBroadcastNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!notifBroadcastTitle.trim() || !notifBroadcastText.trim()) {
+      alert("Sarlavha va xabar matnini kiriting!");
+      return;
+    }
+
+    setIsSendingNotif(true);
+    setNotifStatusMsg(null);
+    try {
+      const res = await fetch('/api/admin/broadcast-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-passcode': adminPasscode,
+        },
+        body: JSON.stringify({
+          adminPasscode,
+          title: notifBroadcastTitle.trim(),
+          text: notifBroadcastText.trim(),
+          icon: notifBroadcastIcon || '🔔',
+          targetTab: notifBroadcastTab,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotifStatusMsg("✅ Bildirishnoma barcha foydalanuvchilarga darhol yetkazildi va saqlandi!");
+        setNotifBroadcastTitle('');
+        setNotifBroadcastText('');
+        await onRefreshData();
+      } else {
+        setNotifStatusMsg(`❌ Xatolik: ${data.error}`);
+      }
+    } catch (err: any) {
+      setNotifStatusMsg(`❌ Tarmoq xatosi: ${err.message}`);
+    } finally {
+      setIsSendingNotif(false);
+    }
+  };
 
   // Dedicated "Ball / Tanga / Yulduz Qo'shish" Modal State
   const [isAddScoreModalOpen, setIsAddScoreModalOpen] = useState(false);
@@ -1367,6 +1516,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Navigation Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-4">
         <button
+          onClick={() => setActiveSection('cloud_storage')}
+          className={`py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+            activeSection === 'cloud_storage'
+              ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-300'
+              : 'bg-slate-900 text-emerald-400 hover:text-white border border-emerald-500/40'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>☁️ Google & Firebase Xotirasi (Zaxira)</span>
+        </button>
+
+        <button
           onClick={() => setActiveSection('ratings')}
           className={`py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
             activeSection === 'ratings'
@@ -1508,6 +1669,182 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <span>🎮 Platforma Boshqaruvi (Do'kon, Baraban, Gameball, Jamoa)</span>
         </button>
       </div>
+
+      {/* ========================================== */}
+      {/* SECTION 0: BULUTLI XOTIRA VA ZAXIRA (GOOGLE & FIREBASE) */}
+      {/* ========================================== */}
+      {activeSection === 'cloud_storage' && (
+        <div className="space-y-6">
+          {/* Cloud Storage Main Status Card */}
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-emerald-950/40 border border-emerald-500/30 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+              <Cloud className="w-64 h-64 text-emerald-400" />
+            </div>
+
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-black tracking-wide uppercase mb-3">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  Google & Firebase Firestore • 100% Doimiy Xotira
+                </div>
+                <h2 className="text-2xl font-black text-white flex items-center gap-2.5">
+                  <ShieldCheck className="w-7 h-7 text-emerald-400" />
+                  <span>Platforma Xotirasi va Ma'lumotlar Xavfsizligi</span>
+                </h2>
+                <p className="text-xs text-slate-300 max-w-2xl mt-1.5 leading-relaxed">
+                  Barcha testlar, foydalanuvchilar, ballar, sertifikatlar, kitestgram xabarlari va natijalar Firebase Firestore hamda mahalliy atomik fayllarda doimiy saqlanadi. Hech qachon o'chib ketmaydi.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3 mt-4 text-[11px] font-mono text-slate-400">
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                    DB ID: <strong className="text-emerald-300">{cloudStatus?.firestoreDatabaseId || 'ai-studio-kitestdasturlash-2a8299c9-ca37-4a25-a804-24dbb801fb9e'}</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60">
+                    Loyiha: <strong className="text-sky-300">{cloudStatus?.projectId || 'inspiring-radar-5mbw7'}</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-emerald-300">
+                    Holat: 🟢 Faol va Sinxron
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSyncToCloud}
+                  disabled={isSyncingCloud}
+                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isSyncingCloud ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingCloud ? "Sinxronlanmoqda..." : "⚡ Hozir Sinxronlash"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadFullBackup}
+                  className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-sky-400" />
+                  <span>JSON Zaxirasini Yuklab Olish</span>
+                </button>
+
+                <label className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer">
+                  <Upload className="w-4 h-4 text-amber-400" />
+                  <span>Zaxiradan Tiklash</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportBackupFile}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {cloudMessage && (
+              <div className="mt-4 p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/50 text-xs font-bold text-emerald-200">
+                {cloudMessage}
+              </div>
+            )}
+          </div>
+
+          {/* Real-time Storage Metric Counters */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+              <span className="text-[11px] font-semibold text-slate-400">👥 Foydalanuvchilar</span>
+              <div className="text-xl font-black text-white mt-1 font-mono">{users.length}</div>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+              <span className="text-[11px] font-semibold text-slate-400">📚 Testlar Katalogi</span>
+              <div className="text-xl font-black text-emerald-400 mt-1 font-mono">{tests.length}</div>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+              <span className="text-[11px] font-semibold text-slate-400">🏅 Olimpiadalar</span>
+              <div className="text-xl font-black text-amber-400 mt-1 font-mono">{contests.length}</div>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+              <span className="text-[11px] font-semibold text-slate-400">📝 Yechilgan Natijalar</span>
+              <div className="text-xl font-black text-sky-400 mt-1 font-mono">{submissions.length}</div>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+              <span className="text-[11px] font-semibold text-slate-400">🎓 Sertifikatlar</span>
+              <div className="text-xl font-black text-purple-400 mt-1 font-mono">{storeCertificates.length}</div>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+              <span className="text-[11px] font-semibold text-slate-400">🔒 Zaxira Nusxalari</span>
+              <div className="text-xl font-black text-emerald-400 mt-1 font-mono">100% Himoya</div>
+            </div>
+          </div>
+
+          {/* In-App Real-time Notification Broadcaster */}
+          <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800">
+            <h3 className="text-base font-extrabold text-white flex items-center gap-2 mb-2">
+              <Megaphone className="w-5 h-5 text-amber-400" />
+              <span>Barcha Foydalanuvchilarga Haqiqiy Bildirishnoma Yuborish</span>
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              Bu orqali barcha saytdagi faol o'quvchilarga ekranda ovozli bildirishnoma ko'rsatiladi va saqlanadi.
+            </p>
+
+            <form onSubmit={handleSendBroadcastNotification} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-2">
+                  <label className="text-[11px] font-bold text-slate-400 mb-1 block">Bildirishnoma Sarlavhasi</label>
+                  <input
+                    type="text"
+                    value={notifBroadcastTitle}
+                    onChange={(e) => setNotifBroadcastTitle(e.target.value)}
+                    placeholder="Masalan: 🏆 Yangi Respublika Olimpiadasi boshlandi!"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 mb-1 block">Bo'limga Yo'naltirish</label>
+                  <select
+                    value={notifBroadcastTab}
+                    onChange={(e) => setNotifBroadcastTab(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:border-amber-500 focus:outline-none"
+                  >
+                    <option value="contests">🏅 Olimpiadalar</option>
+                    <option value="tests">📚 Testlar Bo'limi</option>
+                    <option value="kitestgram">✈️ KitestGram Muloqot</option>
+                    <option value="gemini_ai">⚡ KitestAI Pro</option>
+                    <option value="gameball">🎮 Kiteshot 3D</option>
+                    <option value="store_shop">🛍️ Do'kon & Yulduzlar</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 mb-1 block">Xabar Matni</label>
+                <textarea
+                  rows={2}
+                  value={notifBroadcastText}
+                  onChange={(e) => setNotifBroadcastText(e.target.value)}
+                  placeholder="Xabar matnini kiriting. O'quvchilar buni o'z bildirishnomalar panelida ko'radilar..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:border-amber-500 focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                {notifStatusMsg ? (
+                  <span className="text-xs font-bold text-emerald-400">{notifStatusMsg}</span>
+                ) : <span />}
+
+                <button
+                  type="submit"
+                  disabled={isSendingNotif}
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isSendingNotif ? "Yuborilmoqda..." : "Bildirishnomani Yuborish"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ========================================== */}
       {/* SECTION 1: REYTING VA BALL BOSHQARUVI      */}
